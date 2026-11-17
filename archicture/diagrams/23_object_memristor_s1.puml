@@ -1,0 +1,48 @@
+@startuml obj_memristor_s1
+title Объектная диаграмма: схема сценария S1 (источник — мемристор Yakopcic — земля)
+
+object ":SchematicScene" as SCENE
+object ":CellSchema\nname = \"memristor_iv\"" as CELL
+object ":Instance\nname = \"V1\"\nmaster = \"vsource\"" as V1
+object ":Instance\nname = \"Xmem\"\nmaster = \"memristor_yakopcic\"" as XMEM
+object ":Instance\nname = \"GND\"\nmaster = \"ground\"" as GND
+object ":Wire\nnet = \"in\"" as W1
+object ":Wire\nnet = \"0\"" as W2
+object ":Wire\nnet = \"0\"\"" as W3
+object ":ModelSchema\nname = \"mem_yakopcic\"" as MODEL
+object ":MemristorYakopcic\n(from rcad.devices)" as DEV
+object ":TranSpec\ntstop = 2 s\nmethod = TRAP" as SPEC
+object ":Result\naxis = t\nseries = V(in), I(Xmem), @Xmem.x" as RES
+
+SCENE --> CELL
+CELL --> V1
+CELL --> XMEM
+CELL --> GND
+CELL --> W1
+CELL --> W2
+CELL --> W3
+
+V1 --> W1 : "+ → in\n− → 0"
+XMEM --> W1 : "top ← in"
+XMEM --> W3 : "bot ← 0"
+GND --> W3
+XMEM --> MODEL : "type_name"
+MODEL --> DEV : "registry lookup"
+DEV ..> SPEC : "stamp_static/dynamic,\neval_state под TRAN"
+SPEC --> RES
+
+note right of XMEM
+  params:{"\na1":0.17,"a2":0.17,"b":0.05,
+  "Vp":0.65,"Vn":0.56,"Ap":4e3,"An":4e3,
+  "xp":0.3,"xn":0.5,"alphap":1,"alphan":1,
+  "xo":0.3,"eta":1} — ровно 13 имён (FR-MEM-007).
+  SV: x ∈ [0,1], x(0) = xo = 0.3.
+end note
+
+note bottom of RES
+  Сценарий S1 (ТЗ п. 3): SIN 1 Гц треугольный сигнал,
+  петля I(V) и траектория x(t),
+  x ∈ [0,1] на всём ряду (T5).
+end note
+
+@enduml

@@ -1,0 +1,84 @@
+@startuml deployment
+title Развёртывание MVP: рабочая станция инженера
+
+node "PC Windows 10 21H2+ / 11 x64" as PC {
+
+  node "C:\\Program Files\\RuCadVirtuoso" as INSTALL {
+    artifact "RuCadVirtuoso.exe" as EXE
+    folder "_internal\\" {
+      artifact "python312.dll\n+ stdlib" as PY
+      artifact "numpy / scipy (.pyd)" as NP
+      artifact "PySide6 (Qt6 dll + plugins)" as QT
+      artifact "pyqtgraph / pydantic" as EXTRA
+      artifact "rcad\\ (ядро, приборы,\nтранслятор VA, UI)" as RCAD
+    }
+    artifact "Inno Setup uninstaller" as UNINST
+  }
+
+  node "%APPDATA%\\RuCadVirtuoso" as APPDATA {
+    folder "logs\\" {
+      artifact "rucadvirtuoso.log\n(RotatingFileHandler)" as LOG
+      artifact "compile_<hash>.log" as CLOG
+    }
+    artifact "settings.json\n(cl.exe path, antialias,\nmaxstep ratio)" as SETTINGS
+  }
+
+  folder "D:\\projects\\my_crossbar.rcad\\" as PROJECT {
+    artifact "project.json" as PJ
+    artifact "cells\\<cell>.json" as CELLS
+    artifact "symbols\\<cell>.json" as SYMS
+    artifact "models\\<name>.json" as MODELS
+    artifact "veriloga\\my_rram.va" as VASRC
+    folder "cache\\" {
+      artifact "<sha256>.dll" as CACHE
+      artifact "<sha256>.json" as CACHEMETA
+    }
+    artifact "recovery.json" as RECOVERY
+  }
+
+  node "MSVC Build Tools 2022 (опционально)" as MSVC {
+    artifact "cl.exe" as CL
+    artifact "vcvars64.bat" as VCVARS
+  }
+
+  node "Файловая система NTFS" as FS
+}
+
+cloud "Git / VCS (вне поставки)" as VCS {
+  artifact "исходники + .va\n(cache/ исключён)" as REPO
+}
+
+EXE --> PY
+EXE --> RCAD
+EXE --> FS
+CL --> FS
+RCAD --> NP
+RCAD --> QT
+RCAD --> EXTRA
+RCAD --> LOG : пишет
+RCAD --> SETTINGS : читает/пишет
+RCAD --> PROJECT : открывает/сохраняет
+RCAD --> CL : subprocess (только VA-модели)
+CL --> VCVARS
+RCAD --> CACHE : загружает через ctypes.CDLL
+VASRC --> CACHE : cl.exe /LD /O2
+CELLS --> VCS
+VASRC --> VCS
+REPO --> PROJECT
+
+note right of INSTALL
+  Self-contained Python 3.12 (NFR-DIST-003).
+  Размер установки ≤ 350 МБ без MSVC (NFR-DIST-001).
+  Холодный старт ≤ 5 с (NFR-PERF-008).
+  CLR / .NET и установленный Python НЕ требуются.
+end note
+
+note bottom of CACHE
+  Кэш не входит в VCS (FR-PRJ-006).
+  При отсутствии DLL на другой машине
+  пересборка из .va (FR-PRJ-007).
+  Якобиан и ABI — аналитические;
+  исключения C++ не пересекают границу (NFR-VA-009).
+end note
+
+@enduml

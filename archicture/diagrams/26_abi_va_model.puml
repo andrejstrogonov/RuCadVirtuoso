@@ -1,0 +1,79 @@
+@startuml abi_va_model
+title C ABI подключаемой Verilog-A модели (ТЗ п. 8.4) и поток данных в ядро
+
+package "DLL (C++, extern \"C\", VA_ABI_VERSION = 1)" {
+  class VaModelInfo <<struct>> {
+    +const char* name
+    +int num_terminals
+    +int num_params
+    +int num_internal_states
+    +VaPortDesc* ports
+    +VaParamDesc* params
+  }
+  class VaParamDesc <<struct>> {
+    +const char* name
+    +int kind
+    +double default_value
+    +double min_value
+    +double max_value
+    +const char* unit
+  }
+  class VaAbiFunctions <<functions>> {
+    +va_get_info() : const VaModelInfo*
+    +va_init(state*, p*) : int
+    +va_eval_static(v*, p*, t*, i_el*, gmat*) : int
+    +va_eval_dynamic(v*, p*, t*, q_el*, cmat*) : int
+    +va_eval_state(v*, p*, x*, dx*) : int
+    +va_get_error() : const char*
+  }
+  VaModelInfo *-- VaParamDesc
+}
+
+package "Python side (rcad.abi)" {
+  class CtypesLoader {
+    +load(path)
+    +check_abi_version()
+  }
+  class VaModel {
+    +info: VaModelInfo
+    +v_buf: np.ndarray
+    +g_buf: np.ndarray
+    +q_buf: np.ndarray
+    +c_buf: np.ndarray
+    +call_static() : (i_el, G)
+    +call_dynamic() : (q_el, C)
+    +call_state(x) : dx
+    +last_error() : str
+  }
+  class VaDevice {
+    +stamp_static(v, p, t, out)
+    +stamp_dynamic(v, p, t, out)
+    +eval_state(v, p, x, out)
+  }
+}
+
+class "rcad.core.devices.DeviceModel" as PROTOCOL <<Protocol>>
+
+CtypesLoader --> VaModel : создаёт
+VaModel --> VaDevice : обёрнут
+VaDevice ..|> PROTOCOL
+CtypesLoader ..> VaAbiFunctions : dlsym/ctypes
+VaModel ..> VaAbiFunctions : вызовы
+
+note right of VaAbiFunctions
+  Диапазоны параметров из from (0:inf)
+  проверяются в модели → VA_PARAM_RANGE.
+  Возврат != 0 → текст через va_get_error()
+  (thread-local буфер), исключения C++ не
+  пересекают границу (try/catch внутри).
+end note
+
+note bottom of VaModel
+  Буферы NumPy выделяются один раз на прогон
+  (np.ctypeslib) — без роста памяти между
+  прогонами (NFR-RES-002).
+  gmat/cmat — плотные n×n, аналитические
+  производные (FR-VA-ABI-004).
+end note
+
+@enduml

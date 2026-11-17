@@ -1,0 +1,64 @@
+@startuml seq_project_open
+title Последовательность: открытие проекта, восстановление и автосохранение (ТЗ 6.1, FR-PRJ, FR-PRS)
+
+actor "Инженер" as U
+participant "MainWindow" as MW
+participant "ProjectService" as PS
+participant "pydantic-схемы\n(ProjectSchema, CellSchema)" as SCH
+participant "ModelManager" as MM
+participant "VaImportService" as VIS
+participant "Netlister" as NL
+participant "AutosaveTimer\n(5 мин)" as AS
+
+U -> MW : Открыть my_crossbar.rcad
+MW -> PS : open(path)
+activate PS
+PS -> PS : прочитать project.json
+PS -> SCH : model_validate(project.json)
+alt битый / несовместимый формат
+  SCH --> PS : ValidationError (path, field)
+  PS --> MW : Diagnostic(E_PROJECT_CORRUPT, file, field)
+  MW --> U : сообщение в лог, приложение живо\n(FR-PRJ-009)
+else формат валиден
+  SCH -> SCH : миграция по format_version
+  loop каждая cell
+    PS -> SCH : model_validate(cells/<cell>.json)
+    SCH --> PS : CellSchema
+  end
+  PS -> MM : собрать библиотеку (models/, data/symbols/)
+  loop каждая model kind=veriloga
+    PS -> VIS : ensure_compiled(.va, hash)
+    alt cache/<hash>.dll отсутствует
+      VIS --> PS : пересборка из .va\n(или warning, если нет MSVC)
+    else DLL есть
+      VIS --> PS : загружена
+    end
+  end
+  PS -> PS : recovery.json существует и новее файлов?
+  alt есть несохранённые изменения
+    PS --> MW : RecoveryPrompt(dirty_cells)
+    U -> MW : Восстановить / Отклонить
+    MW -> PS : recover(choice)
+  end
+  PS --> MW : ProjectDoc(project, cells, symbols)
+  MW -> MW : SchematicScene.sync(cell)
+  MW -> NL : netlist активной ячейки → NetlistView
+  MW -> AS : start(5 мин)
+  MW --> U : проект открыт (≤ 3 с для 50 схем)
+end
+deactivate PS
+
+loop каждые 5 минут / по закрытию
+  AS -> PS : autosave(doc)
+  PS -> PS : запись *.tmp → os.replace\n(атомарно)
+  PS -> PS : recovery.json remove после успешного сохранения
+end
+
+note right of PS
+  cache/ не входит в VCS (FR-PRJ-006).
+  Переносимость: при отсутствии кэша
+  модели пересобираются на новой машине
+  (FR-PRJ-007/008).
+end note
+
+@enduml

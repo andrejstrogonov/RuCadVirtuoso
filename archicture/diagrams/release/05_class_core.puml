@@ -1,0 +1,222 @@
+@startuml class_core
+title Классы ядра: контракт прибора, схема, система, результат
+
+package "rcad.core.devices" {
+  class ParamSpec <<frozen dataclass>> {
+    +name: str
+    +kind: Literal["real","int","choice"]
+    +default: float
+    +unit: str | None
+    +bounds: tuple[float,float] | None
+    +description_ru: str
+    +description_en: str
+  }
+
+  interface DeviceModel <<Protocol>> {
+    +name: str
+    +terminals: tuple[str,...]
+    +params: tuple[ParamSpec,...]
+    +n_states: int
+    +stamp_static(v, p, t, out: StaticStamps)
+    +stamp_dynamic(v, p, t, out: DynamicStamps)
+    +eval_state(v, p, x, out: StateDerivs)
+  }
+
+  class StaticStamps {
+    +i: np.ndarray     ' (n_terminals,)
+    +g: np.ndarray     ' (n,n) analytic Jacobian
+  }
+  class DynamicStamps {
+    +q: np.ndarray
+    +c: np.ndarray     ' dq/dv
+  }
+  class StateDerivs {
+    +dx: np.ndarray
+  }
+
+  class PrimitiveR
+  class PrimitiveC
+  class PrimitiveL
+  class VoltageSource
+  class CurrentSource
+  class VcvsE
+  class VccsG
+  class CccsF
+  class CcvsH
+  class MosfetSH
+  class MemristorYakopcic
+  class MemristorLinear
+  class MemtransistorGem
+  class NeuristorN1
+  class NeuristorN2
+  class VaDevice
+
+  class ModelRegistry {
+    +register(model_cls)
+    +by_name(name) : type[DeviceModel]
+    +all() : list[type[DeviceModel]]
+  }
+
+  DeviceModel ..> ParamSpec
+  DeviceModel ..> StaticStamps
+  DeviceModel ..> DynamicStamps
+  DeviceModel ..> StateDerivs
+  PrimitiveR ..|> DeviceModel
+  PrimitiveC ..|> DeviceModel
+  PrimitiveL ..|> DeviceModel
+  VoltageSource ..|> DeviceModel
+  CurrentSource ..|> DeviceModel
+  VcvsE ..|> DeviceModel
+  VccsG ..|> DeviceModel
+  CccsF ..|> DeviceModel
+  CcvsH ..|> DeviceModel
+  MosfetSH ..|> DeviceModel
+  MemristorYakopcic ..|> DeviceModel
+  MemristorLinear ..|> DeviceModel
+  MemtransistorGem ..|> DeviceModel
+  NeuristorN1 ..|> DeviceModel
+  NeuristorN2 ..|> DeviceModel
+  VaDevice ..|> DeviceModel
+  ModelRegistry o-- DeviceModel
+}
+
+package "rcad.core.circuit" {
+  class Netlist {
+    +elements: list[Element]
+    +directives: list[Directive]
+  }
+  class Cell {
+    +name: str
+    +ports: list[str]
+    +instances: list[InstanceSpec]
+  }
+  class InstanceSpec {
+    +name: str
+    +master: str
+    +params: dict[str,float]
+    +nodes: dict[str,str]
+  }
+  class FlatCircuit {
+    +nodes: NodeIndex
+    +instances: list[FlatInstance]
+    +models: dict[str, ResolvedModel]
+    +sv_slots: list[SvSlot]
+  }
+  class NodeIndex {
+    +id(name) : int
+    +n_nodes: int
+  }
+  class FlatInstance {
+    +path: str          ' X1.Xmem
+    +model: DeviceModel
+    +node_ids: list[int]
+    +sv_offset: int
+  }
+  class SvSlot {
+    +instance_path: str
+    +name: str           ' x
+    +xmin: float
+    +xmax: float
+    +initial: float
+  }
+  Netlist --> Cell
+  Cell --> InstanceSpec
+  InstanceSpec --> FlatCircuit : flatten (subckt)
+  FlatCircuit --> NodeIndex
+  FlatCircuit --> FlatInstance
+  FlatCircuit --> SvSlot
+  FlatInstance --> DeviceModel
+}
+
+package "rcad.core.mna" {
+  class MnaStructure {
+    +indptr: np.ndarray
+    +indices: np.ndarray
+    +stamps: list[StampSlot]
+    +size: int
+  }
+  class StampSlot {
+    +instance: FlatInstance
+    +row_ptr: int
+    +col_idx: np.ndarray
+  }
+  class MnaSystem {
+    +data: np.ndarray
+    +assemble(x: np.ndarray, alpha: float, dt: float)
+  }
+  MnaStructure --> FlatCircuit
+  MnaStructure --> StampSlot
+  MnaSystem --> MnaStructure
+}
+
+package "rcad.core.solver" {
+  class NewtonSolver {
+    +solve(system, x0) : np.ndarray
+    +max_iter: int = 100
+    +reltol: float = 1e-4
+    +abstol: float = 1e-12
+    +vntol: float = 1e-6
+  }
+  class LinearBackend <<interface>> {
+    +factorize(A) : Factorization
+  }
+  class SpluBackend
+  class KluBackend
+  LinearBackend <|.. SpluBackend
+  LinearBackend <|.. KluBackend
+  NewtonSolver --> LinearBackend
+  NewtonSolver --> MnaSystem
+}
+
+package "rcad.core.analyses" {
+  class AnalysisSpec <<pydantic union>>
+  class OpSpec
+  class DcSpec {
+    +source: str
+    +start: float
+    +stop: float
+    +step: float
+  }
+  class TranSpec {
+    +tstart: float
+    +tstop: float
+    +method: Literal["trap","bdf1","bdf2"]
+    +maxstep: float | None
+  }
+  class AcSpec {
+    +sweep: Literal["dec","oct","lin"]
+    +points: int
+    +fstart: float
+    +fstop: float
+  }
+  class Result {
+    +spec: AnalysisSpec
+    +axis: np.ndarray
+    +series: dict[str, np.ndarray]
+    +diagnostics: list[Diagnostic]
+  }
+  class SimulatorRunner {
+    +run(circuit, spec) : Result
+  }
+  AnalysisSpec <|-- OpSpec
+  AnalysisSpec <|-- DcSpec
+  AnalysisSpec <|-- TranSpec
+  AnalysisSpec <|-- AcSpec
+  SimulatorRunner ..> AnalysisSpec
+  SimulatorRunner --> Result
+  SimulatorRunner --> NewtonSolver
+}
+
+package "rcad.diagnostics" {
+  class Diagnostic <<frozen dataclass>> {
+    +code: str
+    +severity: Literal["info","warning","error"]
+    +file: str | None
+    +line: int | None
+    +column: int | None
+    +message_en: str
+    +hint_ru: str | None
+  }
+  Result --> Diagnostic
+}
+@enduml

@@ -1,0 +1,75 @@
+@startuml seq_tran_analysis
+title Последовательность: запуск TRAN-анализа (S1, S3, T2, T13)
+
+actor "Инженер" as U
+participant "AnalysisDialog" as DLG
+participant "SimulatorService" as SIM
+participant "SimulatorRunner" as RUN
+participant "Flattener +\nMnaStructure" as MNA
+participant "Integrator\n(TRAP/BDF1)" as INT
+participant "NewtonSolver" as NEW
+participant "DeviceModel\n(M1 / N1 / VA)" as DEV
+participant "LinearBackend\n(splu)" as LIN
+participant "ResultStore" as RS
+participant "PlotWindow" as PLOT
+
+U -> DLG : TRAN, tstop=1m, maxstep=1u,\nseries: V(in), I(Xmem), @Xmem.x
+DLG -> DLG : build_spec() → TranSpec (pydantic)
+DLG -> SIM : run(TranSpec)
+activate SIM
+
+SIM -> RUN : run(circuit, spec)  [QThread]
+activate RUN
+RUN -> RUN : ERC-lite + сингулярность\n(до решения)
+alt схема невалидна
+  RUN --> SIM : Result(diagnostics=[E_DANGLING_NODE])
+  SIM --> DLG : failed(diagnostics)
+  DLG --> U : лог + подсветка узла
+else схема валидна
+  RUN -> MNA : flatten + CSR-структура (однократно)
+  MNA --> RUN : структура + slots SV
+  RUN -> RUN : OP в t=0\n(initial_step для VA)
+  loop каждый шаг времени
+    RUN -> INT : next_dt (LTE + breakpoints)
+    INT -> INT : alpha для TRAP/BDF1
+    loop итерации Ньютона (≤100)
+      INT -> NEW : solve(x_k)
+      NEW -> DEV : stamp_static(v,p,t) → i_el, G
+      NEW -> DEV : stamp_dynamic(v,p,t) → q_el, C
+      NEW -> DEV : eval_state(v,p,x) → dx/dt
+      NEW -> LIN : splu(J) / reuse
+      LIN --> NEW : Δx
+      NEW --> NEW : |Δx| ≤ reltol·|x|+abstol ?
+    end
+    alt не сходится
+      NEW -> NEW : gmin-stepping → damping λ\n→ (DC) source/pseudo-transient
+      NEW -> INT : уменьшить dt вдвое
+    end
+    NEW --> INT : x_k
+    INT -> INT : вычислить SV как заряд\n(та же формула)
+    INT -> RUN : progress(t, k)
+    RUN --> SIM : progress
+    SIM --> DLG : progress (сигнал)
+  end
+  RUN -> RS : put(Result: axis, series, diagnostics)
+  RS --> RUN : id
+  RUN --> SIM : Result
+  deactivate RUN
+  SIM --> DLG : finished(result_id)
+  DLG -> PLOT : add_panel(V(in), I(Xmem), @Xmem.x)
+  PLOT --> U : графики, курсор, экспорт CSV/PNG
+end
+deactivate SIM
+
+note over NEW
+  Аналитический Якобиан обязателен для нативных моделей
+  (FR-DEV-003, 1e-6 против центральных разностей).
+  Численный fallback — только VA с warning в лог (ТЗ 7.2).
+end note
+
+note over INT
+  Обязательное попадание точно в точки разрыва
+  PULSE/PWL: t_front ± 1e-12 с (T14, FR-TRAN-004).
+end note
+
+@enduml

@@ -1,0 +1,62 @@
+@startuml
+title Деятельность: шаг интегрирования TRAN с контролем LTE и разрывами — ТЗ 7.5
+
+start
+:Параметры: tstart, tstop,
+maxstep = (tstop − tstart)/100, minstep,
+метод = TRAP | BDF1 | BDF2;
+:t := tstart;
+:метод_текущий := BDF1;
+:OP в t=0 → x_prev (initial_step для VA);
+while (t < tstop) is (да)
+  :dt из LTE-контроллера
+  (первый шаг — min(maxstep, dt_max));
+  if (t + dt > tstop) then (да)
+    :dt := tstop − t;
+  endif
+  :Учесть точки разрыва PULSE/PWL:
+  если фронт внутри (t, t+dt), то dt := t_front − t;
+  if (dt < minstep) then (да)
+    :Останов: диагностика (время, узел);
+    stop
+  endif
+  :Интегрировать шаг методом_текущий
+  (дискретизация d/dt·q и SV);
+  :Решить нелинейную систему
+  (диаграмма «Ньютон + стратегии»);
+  if (сходимость?) then (нет)
+    :dt := dt / 2;
+    :Сбросить на BDF1 (повтор шага);
+  else (да)
+    :Оценить LTE;
+    if (LTE > tol) then (да)
+      :Отклонить шаг: dt := dt / 2;
+      :Сбросить на BDF1;
+    else (нет)
+      :Принять точку: записать узлы,
+      токи приборов, @inst.x;
+      :LTE << tol ? dt := min(2·dt, maxstep);
+      if (прошёл фронт разрыва) then (да)
+        :Перезапуск BDF1;
+      else (нет)
+        :После двух принятых шагов
+        разрешить TRAP;
+      endif
+      :t := t + dt;
+    endif
+  endif
+  if (запрошена отмена) then (да)
+    :Вернуть частичный Result + W_CANCELLED;
+    stop
+  endif
+endwhile (нет)
+:Result: исходные точки + интерполятор;
+stop
+
+note right
+  T14: отклонение от точки фронта ≤ 1e-12 с.
+  SV интегрируются той же формулой, что и заряды
+  (FR-SV-002) — без тихой подмены x.
+end note
+
+@enduml

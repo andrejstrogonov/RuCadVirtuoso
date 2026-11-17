@@ -1,0 +1,36 @@
+@startuml act_dc_sweep
+title Деятельность: DC-sweep (1–2 вложенных параметра) — ТЗ 7.6, FR-DC
+
+start
+:Разобрать DcSpec: источники, start/stop/step\n(внешний цикл — первый параметр);
+:OP в стартовой точке → x_prev;
+:warning_list := [];
+while (точки внешнего параметра) is (да)
+  :Задать значение внешнего источника;
+  while (точки внутреннего параметра) is (да)
+    :Задать значение внутреннего источника;
+    :Решить систему при\nтекущем состоянии приборов (SV не сбрасываются);
+    if (сходимость?) then (нет)
+      :Стратегии: gmin-stepping →\nдемпфирование → source stepping →\n pseudo-transient;
+      if (сходимость достигнута?) then (нет)
+        :ConvergenceError(узел, точка);
+        stop
+      endif
+    endif
+    if (скачок решения > порога?) then (да)
+      :W_DC_DISCONTINUITY\n(переключение мемристора);
+      :Добавить warning в результат;
+    endif
+    :Записать точку в Result\n(источники, узлы, токи, @inst.x);
+  endwhile
+endwhile
+:Result(axis=параметр, series=N);
+stop
+
+note bottom
+  Ветвление решений допускается, но не молча:
+  каждый разрыв фиксируется кодом W_DC_DISCONTINUITY
+  со значением параметра (FR-DC-005).
+end note
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml timing_pulse_and_step
+title Тайминги: фронт PULSE и шаг интегратора (T14, FR-TRAN-004)
+
+robust "Желаемая сетка\n(попадание во фронт)" as GOOD
+concise "Шаг интегратора dt" as DT
+concise "Значение V(in)" as VIN
+
+@0
+GOOD is "t0"
+DT is "dt_max"
+VIN is "V_low"
+@100
+DT is "dt/2"
+@200
+GOOD is "приближение к фронту"
+@260
+DT is "усечён: dt = t_front − t"
+@260
+GOOD is "t_front (попадание ≤ 1e-12 с)"
+VIN is "V_high"
+@270
+DT is "BDF1 после фронта"
+@290
+DT is "BDF1"
+@310
+DT is "разрешён TRAP"
+VIN is "непрерывное PWL/WAVE"
+
+note for GOOD at @260
+  Интегратор не «перепрыгивает» фронт:
+  dt := t_front − t (FR-TRAN-004).
+end note
+
+note for DT at @270
+  После каждого разрыва — перезапуск BDF1,
+  затем возврат к TRAP после 2 принятых шагов.
+end note
+
+@enduml

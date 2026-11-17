@@ -1,0 +1,34 @@
+# RuCadVirtuoso — dev/CI environment (conda-forge as the single source of channels).
+#
+# Usage:
+#   conda env create -f environment.yml
+#   conda activate rucadvirtuoso
+#   python -m pytest            # headless test suite (NFR-TST-005)
+#
+# The shipped runtime is NOT this environment: the installer ships a PyInstaller
+# one-folder build of `src/rcad` (see archicture/ARCH_MVP_schematic.md §11).
+# Only `numpy`, `scipy`, `PySide6`, `pyqtgraph` and `pydantic` reach the runtime
+# bundle (NFR-DIST-002); the `dev` feature carries tooling that must not be
+# imported by `rcad.core` / `rcad.devices` / `rcad.veriloga`.
+name: rucadvirtuoso
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  # runtime
+  - numpy>=2.0
+  - scipy>=1.13
+  - pyside6>=6.7
+  - pyqtgraph>=0.13
+  - pydantic>=2.7
+  # tooling (never imported by the core layers)
+  - pytest>=8.0
+  - pytest-cov
+  - pytest-qt
+  - hypothesis>=6.100
+  # packaging / installers (E4)
+  - pip
+  - pip:
+      - pyinstaller>=6.6
+      - ruff
+      - mypy

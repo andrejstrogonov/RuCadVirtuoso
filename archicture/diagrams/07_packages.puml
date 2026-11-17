@@ -1,0 +1,81 @@
+@startuml packages
+title Пакеты и правила зависимостей (AD-01, NFR-TST-002)
+
+package "src" {
+  package "rcad" {
+    component [schemas] as SCHEMAS
+    component [diagnostics] as DIAG
+
+    package "core" {
+      component [netlist] as NETLIST
+      component [circuit] as CIRCUIT
+      component [mna] as MNA
+      component [solver] as SOLVER
+      component [integ] as INTEG
+      component [analyses] as ANALYSES
+      component [devices\n(contract, primitives)] as COREDEV
+    }
+
+    component [devices\n(builtin models)] as DEV
+    component [veriloga] as VA
+    component [abi] as ABI
+    component [services] as SVC
+    component [ui] as UI
+    component [cli] as CLI
+  }
+  component [main.py] as MAIN
+}
+
+folder "data/symbols/" as SYM
+folder "tests/golden/" as GOLD
+folder "<project>.rcad/" as PROJ
+artifact "cache/<sha256>.dll" as DLL
+
+MAIN --> UI
+MAIN --> CLI
+UI --> SVC
+CLI --> SVC
+
+SVC --> ANALYSES
+SVC --> NETLIST
+SVC --> SCHEMAS
+SVC --> DEV
+SVC --> VA
+SVC --> ABI
+SVC --> PROJ
+SVC --> GOLD
+
+ANALYSES --> SOLVER
+ANALYSES --> INTEG
+ANALYSES --> MNA
+ANALYSES --> CIRCUIT
+ANALYSES --> DIAG
+MNA --> CIRCUIT
+MNA --> COREDEV
+SOLVER --> MNA
+INTEG --> MNA
+CIRCUIT --> NETLIST
+NETLIST --> DIAG
+VA --> ABI
+DEV --> COREDEV
+DEV --> SYM
+ABI --> DLL
+
+legend right
+  **Разрешённые направления (вниз):**
+  ui → services → core, abi, veriloga
+  analyses → solver, integ, mna, circuit
+  mna → circuit, core.devices
+  circuit → netlist
+  любой core/* → schemas, diagnostics
+
+  **Запрещено (CI, NFR-TST-002):**
+  core/devices/veriloga → PySide6, pyqtgraph, rcad.ui
+  rcad.devices → rcad.analyses
+  ui → core.mna, core.solver (только через services)
+
+  **Компилятор (E2):**
+  veriloga → cl.exe → cache DLL → abi → VaDevice
+end legend
+
+@enduml

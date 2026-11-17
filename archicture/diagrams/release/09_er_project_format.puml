@@ -1,0 +1,142 @@
+@startuml er_project_format
+title Формат проекта .rcad/ — схема данных (ТЗ п. 6.1, FR-PRJ, FR-CEL)
+
+hide circle
+skinparam linetype ortho
+
+entity "ProjectSchema\n(project.json)" as PROJECT {
+  * format_version : int <<PK>>
+  --
+  name : str
+  created : datetime
+  modified : datetime
+  libraries : list[str]
+  options : Options
+  active_cell : str <<FK>>
+}
+
+entity "Options" as OPTIONS {
+  * temp : float = 300.15
+  reltol : float = 1e-4
+  abstol : float = 1e-12
+  vntol : float = 1e-6
+  gmin : float = 1e-12
+  maxstep_ratio : float = 0.01
+  antialias_over_500 : bool
+}
+
+entity "CellSchema\n(cells/<cell>.json)" as CELL {
+  * name : str <<PK>>
+  --
+  properties : dict
+  ports : list[Port]
+  instances : list[Instance]
+  wires : list[Wire]
+  junctions : list[Junction]
+}
+
+entity "Port" as PORT {
+  * name : str
+  * direction : in|out|inout
+  * x : int
+  * y : int
+}
+
+entity "Instance" as INST {
+  * name : str
+  * master_cell : str <<FK→CellSchema>>
+  * x : int
+  * y : int
+  rotation : 0|90|180|270
+  mirror : none|x|y
+  params : dict[str, float]
+}
+
+entity "Wire" as WIRE {
+  * net : str
+  * points : list[(int,int)]
+}
+
+entity "Junction" as JUNC {
+  * x : int
+  * y : int
+  * net : str
+}
+
+entity "SymbolSchema\n(symbols/<cell>.json)" as SYMBOL {
+  * cell : str <<PK>>
+  * kind : auto|manual
+  --
+  pins : list[Pin]
+  graphics : list[Shape]
+}
+
+entity "Pin" as PIN {
+  * name : str
+  * x : int
+  * y : int
+  * side : left|right|top|bottom
+}
+
+entity "ModelSchema\n(models/<name>.json)" as MODEL {
+  * name : str <<PK>>
+  * kind : native|veriloga
+  --
+  type_name : str
+  params : dict[str, float]
+}
+
+entity "VaSource\n(veriloga/<file>.va)" as VASRC {
+  * file : str <<PK>>
+  --
+  module : str
+  hash : str
+  abi_version : int
+  params_meta : list[ParamSpec]
+}
+
+entity "CacheEntry\n(cache/<sha256>.dll)" as CACHE {
+  * hash : str <<PK>>
+  --
+  dll_path : str
+  abi_version : int
+  translator_version : str
+  built_at : datetime
+  compiler : str
+}
+
+entity "RecoveryState\n(recovery.json)" as RECOVERY {
+  * project : str
+  * saved_at : datetime
+  --
+  dirty_cells : list[str]
+}
+
+PROJECT ||--|| OPTIONS
+PROJECT ||--o{ CELL : "содержит 1..N"
+PROJECT |o--|| CELL : "active_cell"
+CELL ||--o{ PORT
+CELL ||--o{ INST
+CELL ||--o{ WIRE
+CELL ||--o{ JUNC
+INST }o--|| CELL : "master_cell\n(иерархия)"
+CELL ||--o| SYMBOL
+SYMBOL ||--o{ PIN
+PROJECT ||--o{ MODEL
+MODEL }o--o| VASRC : "kind = veriloga"
+VASRC ||--o{ CACHE : "hash"
+PROJECT |o--o| RECOVERY
+
+note right of PROJECT
+  Версия формата обязательна (FR-PRJ-003).
+  Битый JSON — диагностика без падения (FR-PRJ-009).
+  cache/ исключён из VCS (FR-PRJ-006).
+end note
+
+note bottom of SYMBOL
+  Отсутствующий symbols/<cell>.json
+  восстанавливается авто-генерацией
+  по списку портов (FR-HIE-004).
+end note
+
+@enduml

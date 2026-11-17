@@ -1,0 +1,54 @@
+@startuml seq_erc_run
+title Последовательность: ERC-lite → валидация → DC-sweep (T4, T15, FR-ERC)
+
+actor "Инженер" as U
+participant "SchematicScene" as SCENE
+participant "Netlister" as NL
+participant "ERC-lite" as ERC
+participant "Netlist Parser" as PAR
+participant "Flattener +\nNodeIndex" as FLAT
+participant "Singularity /\nDC-path check" as DIAG
+participant "SimulatorRunner\n(DC sweep)" as RUN
+participant "PropertyPanel" as PROPS
+
+U -> SCENE : Check (или Запуск анализа)
+SCENE -> NL : to_netlist(cell)
+NL --> SCENE : текст netlist
+SCENE -> ERC : check(cell)
+activate ERC
+ERC -> ERC : дубли имён инстансов
+ERC -> ERC : висящие выводы / неподключённые порты
+ERC -> ERC : наличие земли (0/gnd)
+alt ошибки ERC
+  ERC --> SCENE : [E_DUP_NAME, E_DANGLING_PIN, E_NO_GROUND]
+  SCENE --> U : подсветка объектов, запуск блокируется
+else ERC чист
+  ERC --> SCENE : [ok]
+  SCENE -> PAR : parse(netlist)
+  PAR --> SCENE : Netlist AST | StructuralError(file,line,col)
+  SCENE -> FLAT : flatten(subckt) + NodeIndex
+  FLAT -> DIAG : каждый узел имеет DC-путь к земле?\nконтур источников напряжения?
+  alt узел изолирован
+    DIAG --> FLAT : E_FLOATING_NODE(node="X1.n3")
+    FLAT --> SCENE : Diagnostic до решения (T15)
+    SCENE --> U : ошибка с именем узла, симуляция не стартует
+  else схема корректна
+    SCENE -> RUN : run(circuit, DcSpec(\n  source="V1", start=0, stop=2, step=0.01))
+    RUN -> RUN : OP → выровненная\nпоследовательность точек
+    alt разрыв решения DC
+      RUN -> RUN : W_DC_DISCONTINUITY\n(переключение мемристора)
+      RUN --> PROPS : warning с точкой развёртки
+    end
+    RUN --> SCENE : Result(axis=V1.V, series=I(Xmem))
+    SCENE --> U : графики + предупреждения в MessageLog
+  end
+end
+deactivate ERC
+
+note over PROPS
+  Параметры инстанса валидируются по ParamSpec
+  (тип/диапазон/единица) ещё до ERC —
+  неверное значение не попадает в netlist (FR-PRP).
+end note
+
+@enduml

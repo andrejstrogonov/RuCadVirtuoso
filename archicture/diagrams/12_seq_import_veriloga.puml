@@ -1,0 +1,75 @@
+@startuml seq_import_veriloga
+title Последовательность: импорт пользовательской Verilog-A модели (S2, T9–T11)
+
+actor "Инженер" as U
+participant "ImportVaWizard" as WIZ
+participant "VaImportService" as VIS
+participant "SettingsService" as SET
+participant "VaValidator +\nSemantics" as SEM
+participant "C++ Codegen" as CG
+participant "VaCompiler\n(subprocess)" as CC
+participant "cl.exe (MSVC)" as CL
+participant "ctypes Loader" as LD
+participant "ModelManager" as MM
+participant "LibraryPanel" as LIB
+
+U -> WIZ : выбрать my_rram.va
+WIZ -> VIS : import_file(path)
+activate VIS
+VIS -> SEM : validate(.va)
+SEM -> SEM : ровно один module +\nодин analog; подмножество §8.2
+
+alt синтаксис / неподдерживаемая конструкция
+  SEM --> VIS : Diagnostic(file:line:col, "not supported in MVP")
+  VIS --> WIZ : [error]
+  WIZ --> U : показать ошибку; DLL не создаётся
+else модель валидна
+  VIS -> VIS : sha256 = hash(.va + VA_ABI_VERSION\n+ translator_version)
+  VIS -> VIS : cache/<sha256>.dll существует и свежая?
+  alt кэш актуален
+    VIS -> LD : load(cache/<sha256>.dll)
+  else кэш отсутствует/устарел
+    VIS -> CG : generate C++ (символьные производные)
+    CG --> VIS : my_rram.cpp
+    VIS -> CC : compile(cpp)
+    CC -> CL : vcvars64 → cl.exe /LD /O2 /I va_runtime
+    alt компилятора нет
+      CC -> SET : cl_exe_path?
+      SET --> CC : None
+      CC --> VIS : E_NO_COMPILER
+      VIS --> WIZ : диалог «Указать cl.exe вручную»
+      U -> WIZ : выбрать путь к cl.exe
+      WIZ -> SET : сохранить путь
+    else ошибка компиляции
+      CL --> CC : stderr
+      CC -> CC : logs/compile_<hash>.log
+      CC --> VIS : E_COMPILE_FAILED + путь к логу
+      VIS --> WIZ : показать лог, ссылка из UI
+    else успех
+      CL --> CC : <sha256>.dll
+      CC -> CC : записать <sha256>.json (метаданные)
+      VIS -> LD : load(dll)
+    end
+  end
+  LD -> LD : проверить VA_ABI_VERSION
+  alt ABI не совпадает
+    LD --> VIS : E_ABI_MISMATCH (не загружаем)
+    VIS --> WIZ : предложить пересборку
+  else ABI совпадает
+    LD --> VIS : va_model_info\n(порты, параметры, SV)
+    VIS -> MM : register_va(model)
+    MM -> MM : метаданные → список ParamSpec
+    MM --> LIB : новая модель в панели библиотеки
+    VIS -> VIS : авто-символ по портам\n(symbols/<cell>.json, kind=auto)
+    VIS --> WIZ : [ok] ModelEntry
+    WIZ --> U : модель доступна для размещения,\nпараметры в PropertyPanel
+  end
+end
+deactivate VIS
+
+note over VIS, CC
+  FR-VA-ERR-008: ни один пользовательский .va
+  не роняет приложение — все ветки возвращают Diagnostic.
+end note
+
+@enduml

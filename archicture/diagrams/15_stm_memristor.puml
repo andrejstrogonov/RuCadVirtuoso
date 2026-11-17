@@ -1,0 +1,65 @@
+@startuml stm_memristor_yakopcic
+title Состояния внутренней переменной мемристора M1 Yakopcic (FR-MEM, T5, T6)
+
+skinparam state {
+  BackgroundColor #F8F8F8
+  BorderColor #333333
+}
+
+[*] --> Init : создание инстанса
+state Init {
+  [*] --> SetXo
+  SetXo : x := xo (параметр)
+  SetXo --> ClampBounds
+  ClampBounds : x := clamp(xo, xp, 1−xn)
+}
+
+state "Окно x ∈ [0,1]" as Window {
+
+  state "Порог не превышен\n(нет движения SV)" as Hold <<choice>> {
+    [*] --> AtXp
+    AtXp : x = xp (нижняя граница окна)
+    AtXp --> At1mXn : спад
+    At1mXn : x = 1−xn (верхняя граница)
+    At1mXn --> AtXp : рост
+  }
+
+  state "Движение SV\n(dx/dt = η·F(V,x)·G(V))" as Motion {
+    state "Рост (η·V ≥ 0,\nx > xp)" as Grow
+    state "Спад (η·V < 0,\nx < 1−xn)" as Shrink
+    Grow --> Shrink : смена знака η·V
+    Shrink --> Grow : смена знака η·V
+  }
+
+  state "Ограничение окном\n(внутри F, ядро не обрезает)" as WinLimit
+}
+
+Init --> Window
+Window --> Hold : |V| < Vp (положит. полуволна)\n|V| < Vn (отриц.)
+Window --> Motion : |V| ≥ Vp / |V| ≥ Vn\nи x в допустимом окне
+Motion --> Hold : V вошёл в зону порога
+Motion --> WinLimit : x → xp (+) или x → 1−xn (−)
+WinLimit --> Motion : направление сменилось
+
+state "W_STATE_CLIP\n(диагностика, debug)" as Clip
+WinLimit --> Clip : выход за [0,1]\nзафиксирован в логе
+
+state "eta = −1\n(инверсное поведение)" as Inverted
+Init --> Inverted : eta = −1
+Inverted --> Window : знак dx/dt инвертирован
+
+note right of Motion
+  F(V,x): ветви exp(−αp·(x−xp))·wp(x)
+  и exp(αn·(x+xn−1))·wn(x), иначе 1.
+  G(V): 0 в зоне |V| ≤ порога.
+end note
+
+note right of Hold
+  T6: при |V| < порога Δx < 1e-6.
+  Порог гарантирует энергонезависимость.
+end note
+
+Clip --> Window : повторный вход в окно
+
+[*] <-- Window : конец анализа (final_step)
+@enduml

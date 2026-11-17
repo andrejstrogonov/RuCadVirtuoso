@@ -1,0 +1,36 @@
+@startuml stm_mosfet_regions
+title Состояния MOSFET (Shichman-Hodges) — области и плавные переходы (FR-MOS-002…004)
+
+state "Отсечка (cutoff)\nVGS < VTO" as CUT
+state "Линейная (triode)\nVGS ≥ VTO, VDS < VDS,sat" as TRI
+state "Насыщение (saturation)\nVGS ≥ VTO, VDS ≥ VDS,sat" as SAT
+state "Подпороговая добавка ISUB\n(экспоненциальное крыло)" as SUB
+
+[*] --> CUT : старт (VGS = 0)
+CUT --> TRI : VGS ≥ VTO и VDS < VDS,sat
+TRI --> SAT : VDS ≥ VGS − VTO (с учётом body effect)
+SAT --> TRI : VDS < VDS,sat
+SAT --> CUT : VGS < VTO
+TRI --> CUT : VGS < VTO
+CUT --> SUB : VGS < VTO, экспоненциальная\nдобавка ISUB
+SUB --> TRI : VGS → VTO (сглаженное слияние)
+
+state "Пересчёт ёмкостей\nCgs / Cgd / Cgb" as CAPS
+CUT --> CAPS
+TRI --> CAPS
+SAT --> CAPS
+CAPS --> CUT : разбиение по области\nбез скачка тока смещения (FR-MOS-007)
+
+note right of SAT
+  λ (LAMBDA) — канал-модуляция:
+  ID = 1/2·KP·W/L·(VGS−VTO)²·(1+λ·VDS).
+  Body effect: VTO_eff = VTO + γ·(√(2φ+|VSB|) − √(2φ)).
+end note
+
+note bottom of CAPS
+  FR-MOS-004: переход между областями плавный,
+  Якобиан без разрывов — проверяется
+  FR-DEV-003 на точках перехода.
+end note
+
+@enduml

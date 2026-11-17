@@ -1,0 +1,47 @@
+@startuml
+title Деятельность: нелинейное решение (Ньютон + стратегии устойчивости) — ТЗ 7.4
+
+start
+:Собрать MNA-структуру (однократно);
+:x := x0 (OP-вектор или предыдущая точка);
+:λ := 1.0;
+:gmin := 1e-3 См;  ' только в режиме gmin-stepping
+:iter := 0;
+repeat
+  :F(x) и J(x) от приборов
+  (i_el, G, q_el, C, dx/dt);
+  :Факторизация splu(J)
+  (переиспользовать, если J не обновлялся);
+  :Δx := J⁻¹ · (−F(x));
+  :x_new := x + λ·Δx;
+  if (сходимость: |Δx| ≤ reltol·|x| + abstol ?) then (да)
+    :Вернуть x_new;
+    stop
+  else (нет)
+    :x := x_new; iter += 1;
+  endif
+  if (iter ≥ 100) then (да)
+    if (λ > 0.1) then (да)
+      :Демпфирование: λ := max(0.1, λ/10);
+    elseif (gmin > 1e-12) then (да)
+      :gmin-stepping: gmin := gmin/1000;
+    elseif (DC или OP и нет source stepping) then (да)
+      :Source stepping: источники 0 → 1;
+    elseif (DC или OP) then (да)
+      :Pseudo-transient до установления;
+    else (все стратегии исчерпаны)
+      :ConvergenceError (узел, итерация);
+      stop
+    endif
+  endif
+repeat while (сходимость не достигнута) is (нет) not (да)
+:Успешно решено;
+stop
+
+note right
+  Порядок стратегий строго по ТЗ п. 7.4:
+  gmin-stepping → демпфирование λ 1→0.1 →
+  source stepping → pseudo-transient.
+end note
+
+@enduml

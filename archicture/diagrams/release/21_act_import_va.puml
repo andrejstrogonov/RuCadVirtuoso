@@ -1,0 +1,64 @@
+@startuml act_import_veriloga
+title Деятельность: импорт Verilog-A модели (S2) — решение и ветвления
+
+start
+:Пользователь выбирает .va (диалог или headless API);
+:Валидация: ровно один module,\nровно один analog;
+if (синтаксис/подмножество ок?) then (нет)
+  :Diagnostic(file:line:col)\nили "not supported in MVP";
+  :Показать в UI, DLL не создаётся;
+  stop
+else (да)
+  :Семантический анализ:\nтипы, from-диапазоны, ddt/idt;
+  if (семантика ок?) then (нет)
+    :Диагностика с подсказкой\n(например, ddx не поддерживается);
+    stop
+  else (да)
+    :sha256 := hash(.va, VA_ABI_VERSION,\ntranslator_version);
+    if (cache/<sha256>.dll существует?) then (да)
+      :Использовать кэш;
+    else (нет)
+      :Генерация C++ (символьные производные,\nобщие подвыражения);
+      if (cl.exe найден?) then (нет)
+        :Диалог «Указать cl.exe вручную»;
+        if (путь указан?) then (нет)
+          :E_NO_COMPILER, импорт отменён;
+          stop
+        else (да)
+          :Сохранить путь в settings.json;
+          :cl.exe /LD /O2 → DLL;
+        endif
+      else (да)
+        :cl.exe /LD /O2 → cache/<sha256>.dll\n(лог компилятора в файл);
+      endif
+      if (компиляция успешна?) then (нет)
+        :E_COMPILE_FAILED + ссылка на лог
+        в MessageLog;
+        stop
+      else (да)
+        :Записать <sha256>.json (метаданные);
+      endif
+    endif
+    :Загрузить DLL через ctypes.CDLL;
+    if (VA_ABI_VERSION совпадает?) then (нет)
+      :E_ABI_MISMATCH, пересборка;
+      stop
+    else (да)
+      :va_get_info → порты, параметры, SV;
+      :ModelManager.register_va(model);
+      :Авто-генерация символа по портам
+      (symbols/<cell>.json, kind=auto);
+      :Обновить LibraryPanel и PropertyPanel;
+      :S2 готов к размещению и DC-развёртке;
+      stop
+    endif
+  endif
+endif
+
+note right
+  Ни на одной ветке приложение не падает:
+  каждая развилка возвращает Diagnostic
+  (FR-VA-ERR-008, NFR-VA-009).
+end note
+
+@enduml

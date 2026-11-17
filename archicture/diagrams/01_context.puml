@@ -1,0 +1,31 @@
+@startuml context
+!include url https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+' Fallback: if the network include is unavailable, render with a local C4_Context.puml.
+title RuCadVirtuoso MVP — System Context
+
+Person(engineer, "Инженер-схемотехник", "Собирает схемы, задаёт модели приборов,\nзапускает DC/TRAN/AC, смотрит графики")
+Person(researcher, "Исследователь мемристивной электроники", "Пишет собственные модели на Verilog-A,\nисследует переключение приборов")
+
+System_Boundary(rucad, "RuCadVirtuoso (настольное приложение)") {
+  System(app, "RuCadVirtuoso MVP", "Редактор схем + ядро моделирования с собственным транслятором Verilog-A")
+}
+
+System_Ext(msvc, "MSVC Build Tools 2022", "cl.exe — компиляция C++ в DLL.\nНужен только для пользовательских .va моделей (ТЗ п. 11.1)")
+System_Ext(ngspice, "ngspice", "Независимый эталон численных результатов.\nИспользуется офлайн при генерации golden-данных, в runtime не входит (ТЗ п. 12.1)")
+System_Ext(winfs, "Файловая система Windows", "Каталоги <project>.rcad/, .va-исходники, cache/*.dll,\n%APPDATA%/RuCadVirtuoso/logs/")
+System_Ext(qt, "Qt 6 / PySide6 runtime", "Отрисовка редактора схем и просмотрщика графиков")
+
+Rel(engineer, app, "Собирает и симулирует схемы", "UI (PySide6)")
+Rel(researcher, app, "Импортирует .va, задаёт параметры моделей", "UI")
+Rel(app, msvc, "Компилирует сгенерированный C++", "cl.exe, subprocess")
+Rel(app, winfs, "Читает/пишет проекты, кэш DLL, логи")
+Rel(app, qt, "Использует", "виджеты, QGraphicsScene")
+Rel(researcher, ngspice, "Опционально сверяет результаты вручную", "netlist-экспорт")
+Rel(app, ngspice, "Сверяется при разработке", "golden CSV в tests/golden/ (CI, не runtime)")
+
+note right of app
+  Требования к достоверности: ТЗ п. 4.3, 12, 13.
+  Все анализы доступны headless — UI не обязателен (NFR-TST-001).
+end note
+
+@enduml

@@ -1,0 +1,101 @@
+@startuml components_core
+title Компоненты ядра моделирования (rcad.core) — ТЗ п. 6.2, 7.1–7.7
+
+package "rcad.core.netlist" {
+  [Lexer] as LEX
+  [Parser\n(recursive descent)] as PAR
+  [Netlist AST] as NAST
+  [Expression evaluator\n(.param)] as EXPR
+  [Quantity suffix\nf p n u m k meg g t] as SUF
+  [Structural errors\n{file,line,column,code,message}] as NERR
+  LEX --> PAR
+  PAR --> NAST
+  PAR --> EXPR
+  EXPR --> SUF
+  PAR --> NERR
+}
+
+package "rcad.core.circuit" {
+  [Subckt Flattener] as FLAT
+  [NodeIndex\n(X1.Xmem.top)] as NIDX
+  [InstanceIndex] as IIDX
+  [ERC-lite\nCheck] as ERC
+  [Singularity / dangling\nnet diagnosis] as DIAG
+  FLAT --> NIDX
+  FLAT --> IIDX
+  ERC --> DIAG
+}
+
+package "rcad.core.mna" {
+  [CSR structure\nbuilt once] as STRUCT
+  [Stamp registry] as STREG
+  [System assembly\nF, J, Q] as SYS
+  [gmin shunt] as GMIN
+  STRUCT --> STREG
+  STREG --> SYS
+  GMIN --> SYS
+}
+
+package "rcad.core.solver" {
+  [Newton-Raphson] as NEWTON
+  [Damping\nlambda 1→0.1] as DAMP
+  [gmin-stepping] as GMINS
+  [Source stepping] as SRCSTEP
+  [Pseudo-transient\nfallback] as PTRAN
+  [Linear backend\nsciPy splu / KLU] as LIN
+  NEWTON --> LIN
+  NEWTON --> DAMP
+  NEWTON --> GMINS
+  NEWTON --> SRCSTEP
+  NEWTON --> PTRAN
+}
+
+package "rcad.core.integ" {
+  [BDF1] as BDF1
+  [TRAP\n(default)] as TRAP
+  [BDF2\n(Could)] as BDF2
+  [LTE step control] as LTE
+  [Breakpoint set\nPULSE / PWL] as BRK
+  [Interpolator] as INTERP
+  LTE --> BRK
+}
+
+package "rcad.core.analyses" {
+  [OP] as OP
+  [DC sweep] as DC
+  [TRAN] as TRAN
+  [AC small-signal] as AC
+  [Analysis runner\nrun_analysis()] as RUN
+  RUN --> OP
+  RUN --> DC
+  RUN --> TRAN
+  RUN --> AC
+}
+
+package "rcad.core.devices" {
+  [DeviceModel protocol] as DEVPROTO
+  [Model registry\n+ ModelManager hook] as REG
+  [Primitives\nR C L V I E G F H] as PRIM
+  REG --> DEVPROTO
+  PRIM ..|> DEVPROTO
+}
+
+NAST --> FLAT
+NIDX --> STRUCT
+NAST --> STRUCT
+STRUCT --> NEWTON
+SYS --> NEWTON
+TRAP --> SYS
+NEWTON --> TRAN
+NEWTON --> DC
+DEVPROTO --> STREG
+DIAG --> RUN
+
+note bottom of RUN
+  Единственная точка входа для UI, CLI и тестов:
+  run_analysis(circuit, spec) -> Result (NFR-TST-001).
+  При ошибке парсера симуляция не запускается,
+  проект остаётся валидным (FR-NL-009).
+end note
+
+@enduml

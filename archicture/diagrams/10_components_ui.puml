@@ -1,0 +1,67 @@
+@startuml component_ui
+title Компоненты UI (PySide6) и их взаимодействие с сервисами — ТЗ п. 10.1
+
+package "rcad.ui" {
+  [MainWindow] as MW
+  [LibraryPanel] as LIB
+  [SchematicScene] as SCENE
+  [PropertyPanel] as PROPS
+  [HierarchyNavigator] as HIER
+  [NetlistView] as NLV
+  [AnalysisDialog] as ADLG
+  [PlotWindow\n(pyqtgraph)] as PLOT
+  [MessageLog] as LOG
+  [ImportVaWizard] as VAWIZ
+  [ShortcutMap] as KEYS
+
+  MW --> LIB
+  MW --> SCENE
+  MW --> PROPS
+  MW --> LOG
+  MW --> HIER
+  MW --> NLV
+  MW --> ADLG
+  ADLG --> PLOT
+  KEYS --> SCENE
+  KEYS --> ADLG
+  VAWIZ --> LIB
+}
+
+package "rcad.services" {
+  [ProjectService] as PS
+  [Netlister] as NL
+  [ModelManager] as MM
+  [SimulatorService] as SIM
+  [VaImportService] as VAI
+  [ResultStore] as RS
+  [SettingsService] as SET
+}
+
+SCENE --> PS : изменения документа\n(QUndoCommand)
+LIB --> MM : список символов
+PROPS --> MM : ParamSpec / валидация
+HIER --> PS : cells/
+NLV --> NL : netlist текущей ячейки
+ADLG --> SIM : run(AnalysisSpec)
+SIM --> PLOT : Result по сигналу finished
+PLOT --> RS : экспорт CSV/PNG
+VAWIZ --> VAI : import_file(.va)
+VAWIZ --> SET : путь cl.exe
+LOG <-- PS : diagnostics
+LOG <-- SIM : diagnostics
+LOG <-- VAI : diagnostics
+
+note bottom of SCENE
+  Модель документа — pydantic-объекты, сцена — её
+  представление; любое действие идёт через
+  QUndoCommand (≥ 50 шагов, FR-SEL-005).
+  При ≥ 500 инстансах антиалиасинг отключается,
+  перерисовка ≤ 30 fps (NFR-PERF-UI).
+end note
+
+note bottom of SIM
+  Расчёт в QThread; обмен только сигналами
+  progress/finished/failed; отмена — флаг в ядре.
+end note
+
+@enduml

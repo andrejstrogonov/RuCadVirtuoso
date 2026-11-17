@@ -1,0 +1,117 @@
+@startuml class_ui_services
+title Классы сервисов и UI (MVP)
+
+package "rcad.services" {
+  class ProjectService {
+    +open(path) : ProjectDoc
+    +save(doc)
+    +autosave(doc)
+    +recover(path) : ProjectDoc | None
+  }
+  class ProjectDoc {
+    +root: Path
+    +project: ProjectSchema
+    +cells: dict[str, CellSchema]
+    +symbols: dict[str, SymbolSchema]
+  }
+  class Netlister {
+    +to_netlist(cell: CellSchema) : str
+    +from_netlist(text) : CellSchema
+  }
+  class ModelManager {
+    +library() : list[ModelEntry]
+    +register_va(dll, meta)
+    +params_for(master) : list[ParamSpec]
+  }
+  class SimulatorService {
+    +run(spec) : Result
+    +cancel()
+    +signals: progress, finished, failed
+  }
+  class VaImportService {
+    +import_file(path) : ModelEntry
+    +diagnostics : list[Diagnostic]
+  }
+  class ResultStore {
+    +put(result) : str
+    +get(id) : Result
+    +export_csv(id, path)
+  }
+  class SettingsService {
+    +cl_exe_path: Path | None
+    +antialias_over_500: bool
+    +maxstep_default_ratio: float
+  }
+  ProjectService --> ProjectDoc
+  ProjectService --> ProjectSchema
+  Netlister --> CellSchema
+  SimulatorService ..> SimulatorRunner
+  SimulatorService --> ResultStore
+  VaImportService --> ModelManager
+  VaImportService ..> VaCompiler
+}
+
+package "rcad.ui" {
+  class MainWindow {
+    +library: LibraryPanel
+    +scene: SchematicScene
+    +properties: PropertyPanel
+    +log: MessageLog
+  }
+  class SchematicScene {
+    +place(symbol, pos)
+    +add_wire(a, b)
+    +check() : list[Diagnostic]
+    +undo_stack: QUndoStack
+  }
+  class LibraryPanel
+  class PropertyPanel {
+    +bind(instance)
+    +validate(params) : bool
+  }
+  class HierarchyNavigator
+  class NetlistView
+  class AnalysisDialog {
+    +build_spec() : AnalysisSpec
+    +selected_series() : list[str]
+  }
+  class PlotWindow {
+    +add_panel(series)
+    +cursor_values() : dict
+    +export_png(path)
+    +export_csv(path)
+  }
+  class MessageLog {
+    +append(diag: Diagnostic)
+    +filter(severity)
+  }
+  class ImportVaWizard {
+    +validate()
+    +compile()
+    +create_symbol(meta)
+  }
+  class UndoCommand <<QUndoCommand>>
+
+  MainWindow *-- LibraryPanel
+  MainWindow *-- SchematicScene
+  MainWindow *-- PropertyPanel
+  MainWindow *-- MessageLog
+  MainWindow --> HierarchyNavigator
+  MainWindow --> AnalysisDialog
+  AnalysisDialog ..> SimulatorService
+  PlotWindow ..> ResultStore
+  SchematicScene --> UndoCommand
+  ImportVaWizard ..> VaImportService
+  PropertyPanel ..> ModelManager
+  ImportVaWizard ..> SettingsService
+}
+
+package "rcad.veriloga.cache" {
+  class VaCompiler {
+    +hash(va_bytes) : str
+    +compile(va_path) : Path
+    +compiler_available() : bool
+  }
+  VaCompiler ..> SettingsService
+}
+@enduml

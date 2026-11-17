@@ -1,0 +1,76 @@
+@startuml components_veriloga
+title Компоненты транслятора Verilog-A и ABI — ТЗ п. 8.1–8.6
+
+package "rcad.veriloga" {
+  [VaValidator\nровно один module + один analog] as VAL
+  [Va Lexer] as LEX
+  [Va Parser] as PAR
+  [Va AST] as AST
+  [Semantic analyzer\nтипы, from-диапазоны,\nподмножество §8.2] as SEM
+  [Symbolic differentiator\nс общими подвыражениями] as DIFF
+  [C++ Codegen] as CG
+  [Compiler driver\ncl.exe + subprocess] as CC
+  [Unsupported\nconstructor reporter] as UNSUP
+
+  VAL --> LEX
+  LEX --> PAR
+  PAR --> AST
+  AST --> SEM
+  SEM --> DIFF
+  DIFF --> CG
+  CG --> CC
+  SEM --> UNSUP
+}
+
+package "cpp/va_runtime" {
+  [Generated model .cpp] as GEN
+  [va_model_info] as INFO
+  [va_eval_static] as ES
+  [va_eval_dynamic] as ED
+  [va_eval_state] as EST
+  [va_init] as INIT
+  [va_get_error\n(thread-local)] as ERR
+  [try/catch boundary\n(no C++ exceptions through ABI)] as GUARD
+  GEN --> INFO
+  GEN --> ES
+  GEN --> ED
+  GEN --> EST
+  GEN --> INIT
+  ES --> GUARD
+  ED --> GUARD
+  EST --> GUARD
+  GUARD --> ERR
+}
+
+package "rcad.abi" {
+  [VA_ABI_VERSION check] as VER
+  [ctypes Loader] as LOADER
+  [VaModel wrapper\nNumPy buffers] as VMODEL
+  [VaRuntimeError bridge\n-> Diagnostic] as BRIDGE
+  LOADER --> VER
+  LOADER --> VMODEL
+  VMODEL --> BRIDGE
+}
+
+CC --> GEN : cl.exe /LD /O2
+LOADER --> INFO
+VMODEL --> ES
+VMODEL --> ED
+VMODEL --> EST
+VMODEL --> INIT
+BRIDGE --> ERR
+
+package "rcad.core.devices" {
+  [VaDevice\nimplements DeviceModel] as VADEV
+}
+VMODEL --> VADEV
+VADEV ..> [DeviceModel protocol]
+
+note right of CC
+  cache/<sha256>.dll,
+  sha256 = hash(.va + VA_ABI_VERSION + версия транслятора).
+  Авто-перекомпиляция при изменении .va (FR-VA-ERR-006).
+  Целевое время ≤ 10 с (FR-VA-PERF-001).
+end note
+
+@enduml

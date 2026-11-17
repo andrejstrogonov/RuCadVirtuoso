@@ -1,0 +1,59 @@
+@startuml stm_va_model_lifecycle
+title Жизненный цикл Verilog-A модели: от файла до расчёта (ТЗ п. 8.1, 8.6, FR-VA-*)
+
+state "Исходник .va\nна диске" as SRC
+state "Проверка подмножества" as VALID {
+  VALID : ровно один module + один analog
+  VALID : from-диапазоны параметров
+}
+state "Ошибка трансляции" as TERR {
+  TERR : file:line:col
+  TERR : "not supported in MVP"
+}
+state "Вычислен hash\n(.va + ABI + версия)" as HASH
+state "Кэш актуален" as CACHED
+state "Генерация C++\n(аналитические производные)" as CODEGEN
+state "Компиляция cl.exe" as COMPILE
+state "Ошибка компиляции\n(лог в файле)" as CERR
+state "DLL в cache/<hash>.dll" as DLL
+state "Проверка VA_ABI_VERSION" as ABI
+state "Ошибка ABI" as AERR
+state "Модель зарегистрирована\nв ModelManager" as REG
+state "Вызов из ядра\nstamp/eval_state" as RUN
+state "VA_RUNTIME_ERROR\n(модель + прибор)" as RERR
+
+[*] --> SRC
+SRC --> VALID : Import Verilog-A
+VALID --> HASH : ok
+VALID --> TERR : синтаксис / конструкция
+TERR --> SRC : исправление .va
+HASH --> CACHED : DLL есть и свежий
+HASH --> CODEGEN : нет / устарел
+CODEGEN --> COMPILE
+COMPILE --> DLL : успех
+COMPILE --> CERR : cl.exe != 0
+CERR --> SRC : правка кода модели
+DLL --> ABI
+CACHED --> ABI
+ABI --> REG : версия совпадает
+ABI --> AERR : несовпадение
+AERR --> CODEGEN : принудительная пересборка
+REG --> RUN
+RUN --> RUN : нормальный вызов
+RUN --> RERR : код возврата != 0
+RERR --> REG : симуляция остановлена,\nдиагностика в лог
+SRC --> HASH : .va изменён →\nавто-перекомпиляция
+
+note right of CACHED
+  cache/ не входит в VCS.
+  Цель: компиляция ≤ 10 с,
+  инкрементальная ≤ 10 % (FR-VA-PERF).
+end note
+
+note bottom of RERR
+  Исключения C++ не пересекают границу DLL
+  (try/catch в va_runtime, NFR-VA-009).
+  Приложение не падает (FR-VA-ERR-008).
+end note
+
+@enduml

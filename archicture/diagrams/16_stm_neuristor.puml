@@ -1,0 +1,41 @@
+@startuml stm_neuristor_n1
+title Состояния нейристора N1 (volatile threshold switching) в LIF-нейроне (T8, FR-N1, FR-NR)
+
+state "HRS (высокоомное)\nR = R_off" as HRS {
+  HRS : s ≈ 0
+  HRS : конденсатор C заряжается входным током
+}
+state "LRS (низкоомное)\nR = R_on" as LRS {
+  LRS : s ≈ 1 (σ-переход, ширина V_smooth)
+}
+state "Спонтанный релакс" as RELAX {
+  RELAX : таймер τ_relax
+  RELAX : сглаженный возврат s → 0
+}
+state "Задержка переключения" as DELAY {
+  DELAY : таймер t_delay
+  DELAY : |V| ≥ V_set удерживается
+}
+
+[*] --> HRS
+HRS --> DELAY : |V| ≥ V_set (сигмоида, ширина V_smooth)
+DELAY --> LRS : t ≥ t_delay
+DELAY --> HRS : |V| упал ниже V_set\n(ложный вызов, без дребезга)
+LRS --> RELAX : |V| ≤ V_hold
+RELAX --> HRS : τ_relax истёк
+LRS --> LRS : спайк выведен в результат\n(@inst.s, I(neuristor))
+
+note right of DELAY
+  FR-NR-001: отсутствие дребезга — переключение
+  за один шаг интегрирования, без многократных
+  рестартов Newton/интегратора.
+  Гладкая аппроксимация ступеньки (V_smooth)
+  скрыта от пользователя, настраиваемая ширина.
+end note
+
+note bottom of HRS
+  T8: частота спайков монотонно растёт с входным током I_in.
+  Проверка: не менее трёх значений I_in, f(I_in) строго возрастает.
+end note
+
+@enduml

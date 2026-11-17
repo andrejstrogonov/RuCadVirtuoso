@@ -1,0 +1,41 @@
+@startuml
+title RuCadVirtuoso MVP — Containers (C4 уровня 2, AD-01: Core → Services → UI)
+
+actor "Инженер" as USER
+
+package "RuCadVirtuoso.exe (PyInstaller one-folder, embedded Python 3.12)" {
+
+  component "UI Layer\nPySide6 6.7+, pyqtgraph\nMainWindow, SchematicScene, PropertyPanel,\nAnalysisDialog, PlotWindow, MessageLog" as UI
+  component "Application Services\nPython 3.12\nProjectService, Netlister, ModelManager,\nSimulatorService, VaImportService, ResultStore" as SVC
+  component "Simulation Core\nPython + NumPy + SciPy\nnetlist, circuit, MNA/DAE, Newton,\nинтеграторы, анализы OP/DC/TRAN/AC" as CORE
+  component "Device Library\nPython + NumPy\nMOSFET, мемристор M1/M2, GEM,\nнейристор N1/N2, примитивы" as DEV
+  component "Verilog-A Toolchain\nPython codegen + ctypes\nlexer/parser/semantics, C++ codegen,\nвызов cl.exe, загрузка DLL" as VATOOL
+  database "Project Store\nкаталог .rcad/ (JSON, pydantic)\nproject.json, cells/, symbols/,\nmodels/, veriloga/, cache/" as STORE
+  component "Diagnostics & Logs\n%APPDATA%/RuCadVirtuoso/logs/\nединые коды, ротация логов" as LOGS
+  component "Скомпилированные VA-модели\nDLL (C ABI v1)\nva_eval_static/dynamic/state" as VADLL
+  component "VA Compiler\nMSVC cl.exe (внешний)" as MSVC
+}
+
+USER --> UI
+UI --> SVC : команды, проект, запуск анализа
+SVC --> CORE : run_analysis(circuit, spec)
+CORE --> DEV : DeviceModel: i_el/G, q_el/C, dx/dt
+SVC --> VATOOL : импорт .va, регистрация модели
+VATOOL --> MSVC : компилирует C++ → DLL
+VATOOL --> VADLL : ctypes.CDLL
+CORE --> VADLL : те же stamp-вызовы (VaDevice)
+SVC --> STORE : сохраняет/загружает проект
+UI --> LOGS : показывает диагностики
+CORE --> LOGS : пишет warning/error
+
+note right of CORE
+  Ядро не импортирует PySide6 —
+  проверяется тестом импортов в CI (NFR-TST-002).
+end note
+
+note bottom of STORE
+  cache/ не входит в VCS;
+  при переносе проекта модели пересобираются из .va.
+end note
+
+@enduml

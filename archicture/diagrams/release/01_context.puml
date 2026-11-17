@@ -1,0 +1,31 @@
+@startuml
+title RuCadVirtuoso MVP — System Context (C4 уровня 1)
+
+actor "Инженер-схемотехник" as ENGINEER
+actor "Исследователь\nмемристивной электроники" as RESEARCHER
+
+package "RuCadVirtuoso (настольное приложение)" {
+  component "RuCadVirtuoso MVP\nРедактор схем + ядро моделирования\n+ собственный транслятор Verilog-A" as APP
+}
+
+package "Внешние системы" {
+  component "MSVC Build Tools 2022\ncl.exe — компиляция C++ в DLL\n(нужен только для .va моделей)" as MSVC
+  component "ngspice\nнезависимый эталон\n(офлайн, генерация golden)" as NGSPICE
+  component "Файловая система Windows\n<project>.rcad/, *.va, cache/*.dll,\n%APPDATA%/RuCadVirtuoso/logs/" as FS
+  component "Qt 6 / PySide6 runtime\nотрисовка схем и графиков" as QT
+}
+
+ENGINEER --> APP : собирает и симулирует схемы
+RESEARCHER --> APP : импортирует .va,\nзадаёт параметры моделей
+APP ..> MSVC : компилирует C++ (subprocess)
+APP --> FS : читает/пишет проекты, кэш, логи
+APP ..> QT : использует виджеты
+RESEARCHER ..> NGSPICE : опционально сверяет\nэкспортированный netlist
+APP ..> NGSPICE : сверка при разработке\n(golden CSV в CI, не runtime)
+
+note bottom of APP
+  Требования к достоверности — ТЗ п. 4.3, 12, 13.
+  Все анализы доступны headless: run_analysis() без GUI (NFR-TST-001).
+end note
+
+@enduml

@@ -1,0 +1,41 @@
+@startuml container
+!include url https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+title RuCadVirtuoso MVP — Containers (AD-01: Core → Services → UI)
+
+Person(engineer, "Инженер", "Пользователь приложения")
+
+System_Boundary(rucad, "RuCadVirtuoso.exe (PyInstaller one-folder, embedded Python 3.12)") {
+
+  Container(ui, "UI Layer", "PySide6 6.7+, pyqtgraph", "Главное окно, SchematicScene, панель свойств,\nдиалог анализа, просмотрщик графиков, лог")
+  Container(svc, "Application Services", "Python 3.12", "ProjectService, Netlister, ModelManager,\nSimulatorService, VaImportService, ResultStore")
+  Container(core, "Simulation Core", "Python + NumPy + SciPy", "Netlist-парсер, flatten иерархии, сборка MNA/DAE,\nНьютон, интеграторы, анализы OP/DC/TRAN/AC")
+  Container(devices, "Device Library", "Python + NumPy", "MOSFET, мемристор M1/M2, мемтранзистор GEM,\nнейристор N1/N2, примитивы R/C/L/источники")
+  Container(va, "Verilog-A Toolchain", "Python codegen + ctypes", "Lexer/parser/semantics, C++ codegen,\nвызов cl.exe, загрузка DLL через C ABI")
+  ContainerDb(store, "Project Store", "Каталог .rcad/ (JSON, pydantic)", "project.json, cells/, symbols/, models/,\nveriloga/, cache/")
+  Container(logs, "Diagnostics & Logs", "%APPDATA%/RuCadVirtuoso/logs/", "Единые коды диагностик, ротация логов,\nкомпиляторный лог")
+
+  Container(va_dll, "Скомпилированные VA-модели", "DLL (C ABI, va_abi v1)", "va_eval_static/dynamic/state, метаданные модели")
+}
+
+System_Ext(msvc, "MSVC Build Tools", "cl.exe", "Компилятор для VA")
+System_Ext(ngspice, "ngspice", "Эталон (офлайн)", "Генерация golden-данных")
+
+Rel(engineer, ui, "Работает со схемой", "Qt")
+Rel(ui, svc, "Команды, запросы проекта, запуск анализа", "Python API")
+Rel(svc, core, "run_analysis(circuit, spec)", "Python API")
+Rel(core, devices, "Сборка вкладов i_el/G, q_el/C, SV", "DeviceModel protocol")
+Rel(svc, va, "Импорт .va, регистрация модели")
+Rel(va, msvc, "Компилирует C++ → DLL", "subprocess")
+Rel(va, va_dll, "Загружает и вызывает", "ctypes.CDLL")
+Rel(core, va_dll, "Те же stamp-вызовы через VaDevice", "ctypes")
+Rel(svc, store, "Сохраняет/загружает проект", "JSON")
+Rel(ui, logs, "Показывает диагностики")
+Rel(core, logs, "Пишет warning/error")
+Rel(ngspice, store, "Эталонные CSV (tests/golden/)", "CI, офлайн")
+
+note right of core
+  Ядро не импортирует PySide6 — проверяется
+  тестом импортов в CI (NFR-TST-002).
+end note
+
+@enduml

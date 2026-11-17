@@ -1,0 +1,43 @@
+@startuml act_newton_solve
+title Деятельность: нелинейное решение (Ньютон + стратегии устойчивости) — ТЗ 7.4, FR-SOLVE
+
+start
+:Собрать MNA-структуру (однократно);
+:x := x0 (OP-вектор / предыдущая точка);
+:λ := 1.0;
+:gmin := 1e-3 См;   ' только в режиме gmin-stepping
+
+repeat
+  :Вычислить F(x) и J(x)\n(i_el, G, q_el, C, dx/dt от приборов);
+  :Факторизация splu(J)\n(переиспользовать, если J не обновлялся);
+  :Δx := J⁻¹ · (−F(x));
+  :x_new := x + λ·Δx;
+  if (|Δx| ≤ reltol·|x| + abstol
+и |F| ≤ vntol/abstol ?) then (да)
+    :Сходимость: вернуть x_new;
+    stop
+  else (нет)
+    :x := x_new; iter += 1;
+  endif
+  if (iter ≥ 100) then (да)
+    if (λ > 0.1) then (да)
+      :Демпфирование: λ := max(0.1, λ/10);
+    elseif (gmin < 1e-12) then (да)
+      :gmin-stepping: gmin := gmin/1000;
+    elseif (анализ = DC/OP и не выполнялся source stepping) then (да)
+      :Source stepping: плавно поднять\nнезависимые источники 0 → 1;
+    elseif (анализ = DC/OP) then (да)
+      :Pseudo-transient: временный\nинтегратор до установления;
+    else (все стратегии исчерпаны)
+      :ConvergenceError\n(узел максимальной невязки, итерация);
+      stop
+    endif
+  endif
+repeat while (сходимость не достигнута)
+
+note right
+  Порядок применения строго по ТЗ п. 7.4:
+  gmin-stepping → демпфирование λ 1→0.1 →
+  source stepping → pseudo-transient.
+end note
+@enduml

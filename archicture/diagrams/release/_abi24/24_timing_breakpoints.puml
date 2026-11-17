@@ -1,0 +1,42 @@
+@startuml
+title Тайминги: фронт PULSE и шаг интегратора (T14, FR-TRAN-004)
+
+clock "t" as T with period 50
+concise "Шаг интегратора dt" as DT
+concise "Значение V(in)" as VIN
+robust "Попадание во фронт" as FRONT
+
+@0
+DT is dt_max
+VIN is V_low
+FRONT is "нет"
+
+@100
+DT is dt_half
+
+@150
+VIN is V_low
+DT is dt_quarter
+
+@260
+DT is "dt = t_front − t"
+VIN is V_high
+FRONT is "фронт: отклонение ≤ 1e-12 с"
+
+@270
+DT is "BDF1 (перезапуск)"
+FRONT is "пройден"
+
+@310
+DT is "разрешён TRAP"
+VIN is "непрерывное PWL"
+
+
+
+note for DT at @260
+  Планируемый шаг усекается так, чтобы попасть
+  точно в точку разрыва PULSE/PWL (FR-TRAN-004).
+end note
+
+
+@enduml

@@ -1,0 +1,83 @@
+@startuml
+title Объектная диаграмма: схема сценария S1 (источник — мемристор Yakopcic — земля)
+
+object SCENE
+SCENE : класс = SchematicScene
+
+object CELL
+CELL : класс = CellSchema
+CELL : name = "memristor_iv"
+
+object V1
+V1 : класс = Instance
+V1 : name = "V1"
+V1 : master = "vsource"
+V1 : sinusoid = 0 1 1
+
+object XMEM
+XMEM : класс = Instance
+XMEM : name = "Xmem"
+XMEM : master = "memristor_yakopcic"
+
+object GND
+GND : класс = Instance
+GND : name = "GND"
+GND : master = "ground"
+
+object WIRE_IN
+WIRE_IN : класс = Wire
+WIRE_IN : net = "in"
+
+object WIRE_0
+WIRE_0 : класс = Wire
+WIRE_0 : net = "0"
+
+object MODEL
+MODEL : класс = ModelSchema
+MODEL : name = "mem_yakopcic"
+MODEL : type_name = "memristor_yakopcic"
+
+object DEV
+DEV : класс = MemristorYakopcic
+DEV : terminals = top, bot
+DEV : n_states = 1
+
+object SPEC
+SPEC : класс = TranSpec
+SPEC : tstop = 2
+SPEC : method = TRAP
+
+object RES
+RES : класс = Result
+RES : axis = t
+RES : series = V(in), I(Xmem), @Xmem.x
+
+SCENE --> CELL
+CELL --> V1
+CELL --> XMEM
+CELL --> GND
+CELL --> WIRE_IN
+CELL --> WIRE_0
+V1 --> WIRE_IN : "+ → in, − → 0"
+XMEM --> WIRE_IN : "top ← in"
+XMEM --> WIRE_0 : "bot ← 0"
+GND --> WIRE_0
+XMEM --> MODEL : type_name
+MODEL --> DEV : registry lookup
+DEV ..> SPEC : stamp_static/dynamic,\neval_state под TRAN
+SPEC --> RES
+
+note right of XMEM
+  params: a1=0.17, a2=0.17, b=0.05,
+  Vp=0.65, Vn=0.56, Ap=4e3, An=4e3,
+  xp=0.3, xn=0.5, alphap=1, alphan=1,
+  xo=0.3, eta=1 — ровно 13 имён (FR-MEM-007).
+  SV: x ∈ [0,1], x(0) = xo = 0.3.
+end note
+
+note bottom of RES
+  Сценарий S1 (ТЗ п. 3): SIN 1 Гц,
+  петля I(V) и траектория x(t), x ∈ [0,1] на всём ряду (T5).
+end note
+
+@enduml
