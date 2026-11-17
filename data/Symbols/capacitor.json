@@ -1,0 +1,14 @@
+{
+  "cell": "capacitor",
+  "kind": "manual",
+  "pins": [
+    {"name": "P", "x": -30, "y": 0, "side": "left"},
+    {"name": "N", "x": 30, "y": 0, "side": "right"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[-30, 0], [-5, 0]]},
+    {"type": "line", "points": [[-5, -15], [-5, 15]]},
+    {"type": "line", "points": [[5, -15], [5, 15]]},
+    {"type": "polyline", "points": [[5, 0], [30, 0]]}
+  ]
+}

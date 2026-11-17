@@ -1,0 +1,49 @@
+{
+  "name": "cmos180",
+  "title": "КМОП 0.18 мкм — базовые устройства",
+  "node": "180 nm",
+  "cells": [
+    {
+      "cell": "mosfet_n",
+      "role": "device",
+      "netlist_card": "M",
+      "params": {
+        "W": "2u", "L": "0.18u",
+        "VTO": 0.45, "KP": 120e-6, "GAMMA": 0.4, "PHI": 0.7, "LAMBDA": 0.02,
+        "TOX": 4.1e-9, "CGSO": 2.5e-10, "CGDO": 2.5e-10, "CGBO": 1e-10,
+        "RD": 0, "RS": 0, "ISUB": 1e-15
+      },
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "mosfet_p",
+      "role": "device",
+      "netlist_card": "M",
+      "params": {
+        "W": "4u", "L": "0.18u",
+        "VTO": -0.45, "KP": 40e-6, "GAMMA": 0.4, "PHI": 0.7, "LAMBDA": 0.02,
+        "TOX": 4.1e-9, "CGSO": 2.5e-10, "CGDO": 2.5e-10, "CGBO": 1e-10,
+        "RD": 0, "RS": 0, "ISUB": 1e-15
+      },
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "resistor",
+      "role": "primitive",
+      "netlist_card": "R",
+      "params": {"R": "1k"},
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "capacitor",
+      "role": "primitive",
+      "netlist_card": "C",
+      "params": {"C": "1p"},
+      "include": "*",
+      "subckt": null
+    }
+  ]
+}

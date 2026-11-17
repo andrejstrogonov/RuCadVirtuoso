@@ -1,0 +1,18 @@
+{
+  "cell": "memtransistor_gem",
+  "kind": "manual",
+  "pins": [
+    {"name": "D", "x": 10, "y": -30, "side": "top"},
+    {"name": "G", "x": -30, "y": 0, "side": "left"},
+    {"name": "S", "x": 10, "y": 30, "side": "bottom"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[-30, 0], [-20, 0]]},
+    {"type": "line", "points": [[-20, -15], [-20, 15]]},
+    {"type": "polyline", "points": [[10, -30], [10, -10], [-15, -10]]},
+    {"type": "polyline", "points": [[10, 30], [10, 10], [-15, 10]]},
+    {"type": "line", "points": [[-15, -13], [-15, 13]]},
+    {"type": "polyline", "points": [[-15, 0], [-7, 0], [-7, -6], [-2, 6], [3, -6], [3, 0], [30, 0]]},
+    {"type": "circle", "center": [8, 0], "r": 3, "fill": "background"}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "cell": "bsource",
+  "kind": "manual",
+  "pins": [
+    {"name": "P", "x": 0, "y": -30, "side": "top"},
+    {"name": "N", "x": 0, "y": 30, "side": "bottom"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[0, -30], [0, -15]]},
+    {"type": "polyline", "points": [[-15, -15], [15, -15], [15, 15], [-15, 15], [-15, -15]]},
+    {"type": "polyline", "points": [[0, 15], [0, 30]]},
+    {"type": "polyline", "points": [[-5, -5], [0, 0], [5, -5]]},
+    {"type": "line", "points": [[0, 0], [0, 5]]}
+  ]
+}

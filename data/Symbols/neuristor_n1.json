@@ -1,0 +1,15 @@
+{
+  "cell": "neuristor_n1",
+  "kind": "manual",
+  "pins": [
+    {"name": "A", "x": 0, "y": -30, "side": "top"},
+    {"name": "B", "x": 0, "y": 30, "side": "bottom"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[-30, 0], [-25, 0]]},
+    {"type": "polyline", "points": [[25, 0], [30, 0]]},
+    {"type": "polyline", "points": [[-25, 0], [-15, -15], [-5, 15], [5, -15], [15, 15], [25, 0]]},
+    {"type": "polyline", "points": [[22, 0], [22, 8], [28, 8]]},
+    {"type": "polyline", "points": [[-22, 0], [-22, -8], [-28, -8]]}
+  ]
+}

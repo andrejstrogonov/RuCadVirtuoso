@@ -1,0 +1,53 @@
+{
+  "name": "gem_transistor_180u",
+  "title": "КМОП 0.18 мкм + мемтранзистор GEM",
+  "node": "180 nm",
+  "cells": [
+    {
+      "cell": "mosfet_n",
+      "role": "device",
+      "netlist_card": "M",
+      "params": {
+        "W": "2u", "L": "0.18u",
+        "VTO": 0.45, "KP": 120e-6, "GAMMA": 0.4, "PHI": 0.7, "LAMBDA": 0.02,
+        "TOX": 4.1e-9, "CGSO": 2.5e-10, "CGDO": 2.5e-10, "CGBO": 1e-10,
+        "RD": 0, "RS": 0, "ISUB": 1e-15
+      },
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "memtransistor_gem",
+      "role": "device",
+      "netlist_card": "X",
+      "params": {
+        "w_on": 1, "w_off": 0,
+        "k_on": 1e-4, "k_off": 1e-4,
+        "alpha_on": 4, "alpha_off": 4,
+        "s_on": 2, "s_off": 2,
+        "beta_on": 1e-3, "beta_off": 1e-3,
+        "v_on": 1, "v_off": -1,
+        "r_on": "1k", "r_off": "100k",
+        "mu": 1e-3, "w_init": 0.5
+      },
+      "include": "models/memtransistor_gem.lib",
+      "subckt": "memtransistor_gem"
+    },
+    {
+      "cell": "resistor",
+      "role": "primitive",
+      "netlist_card": "R",
+      "params": {"R": "1k"},
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "vsource",
+      "role": "primitive",
+      "netlist_card": "V",
+      "params": {"DC": 0},
+      "include": "*",
+      "subckt": null
+    }
+  ]
+}

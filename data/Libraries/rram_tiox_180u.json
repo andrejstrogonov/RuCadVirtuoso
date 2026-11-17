@@ -1,0 +1,77 @@
+{
+  "name": "rram_tiox_180u",
+  "title": "КМОП 0.18 мкм + RRAM TiOx (мемристор Yakopcic)",
+  "node": "180 nm",
+  "cells": [
+    {
+      "cell": "mosfet_n",
+      "role": "device",
+      "netlist_card": "M",
+      "params": {
+        "W": "2u", "L": "0.18u",
+        "VTO": 0.45, "KP": 120e-6, "GAMMA": 0.4, "PHI": 0.7, "LAMBDA": 0.02,
+        "TOX": 4.1e-9, "CGSO": 2.5e-10, "CGDO": 2.5e-10, "CGBO": 1e-10,
+        "RD": 0, "RS": 0, "ISUB": 1e-15
+      },
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "mosfet_p",
+      "role": "device",
+      "netlist_card": "M",
+      "params": {
+        "W": "4u", "L": "0.18u",
+        "VTO": -0.45, "KP": 40e-6, "GAMMA": 0.4, "PHI": 0.7, "LAMBDA": 0.02,
+        "TOX": 4.1e-9, "CGSO": 2.5e-10, "CGDO": 2.5e-10, "CGBO": 1e-10,
+        "RD": 0, "RS": 0, "ISUB": 1e-15
+      },
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "memristor_m1",
+      "role": "device",
+      "netlist_card": "X",
+      "params": {
+        "a1": 0.17, "a2": 0.17, "b": 0.05, "Vp": 0.65, "Vn": 0.56,
+        "Ap": 4000, "An": 4000, "xp": 0.3, "xn": 0.3,
+        "alphap": 3, "alphan": 3, "xo": 0.1, "eta": 1
+      },
+      "include": "models/memristor_yakopcic.lib",
+      "subckt": "memristor_yakopcic"
+    },
+    {
+      "cell": "memristor_m2",
+      "role": "device",
+      "netlist_card": "X",
+      "params": {"Ron": "100", "Roff": "16k", "D": "10n", "mu_v": 1e-14, "x0": 0.5},
+      "include": "models/memristor_linear.lib",
+      "subckt": "memristor_linear"
+    },
+    {
+      "cell": "resistor",
+      "role": "primitive",
+      "netlist_card": "R",
+      "params": {"R": "1k"},
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "capacitor",
+      "role": "primitive",
+      "netlist_card": "C",
+      "params": {"C": "1p"},
+      "include": "*",
+      "subckt": null
+    },
+    {
+      "cell": "vsource",
+      "role": "primitive",
+      "netlist_card": "V",
+      "params": {"DC": 0},
+      "include": "*",
+      "subckt": null
+    }
+  ]
+}

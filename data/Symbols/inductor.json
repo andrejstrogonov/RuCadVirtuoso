@@ -1,0 +1,13 @@
+{
+  "cell": "inductor",
+  "kind": "manual",
+  "pins": [
+    {"name": "P", "x": -30, "y": 0, "side": "left"},
+    {"name": "N", "x": 30, "y": 0, "side": "right"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[-30, 0], [-15, 0]]},
+    {"type": "polyline", "points": [[-15, 0], [-10, -10], [0, -10], [0, 0], [10, -10], [20, -10], [20, 0]]},
+    {"type": "polyline", "points": [[20, 0], [30, 0]]}
+  ]
+}

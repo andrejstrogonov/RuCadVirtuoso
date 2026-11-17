@@ -1,0 +1,16 @@
+{
+  "cell": "vsource",
+  "kind": "manual",
+  "pins": [
+    {"name": "P", "x": 0, "y": -20, "side": "top"},
+    {"name": "N", "x": 0, "y": 20, "side": "bottom"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[0, -20], [0, -10]]},
+    {"type": "circle", "center": [0, 0], "r": 10},
+    {"type": "polyline", "points": [[0, 10], [0, 20]]},
+    {"type": "polyline", "points": [[-5, -5], [5, -5]]},
+    {"type": "polyline", "points": [[0, 0], [0, 5]]},
+    {"type": "polyline", "points": [[-5, 5], [5, 5]]}
+  ]
+}

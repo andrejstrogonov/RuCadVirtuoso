@@ -1,0 +1,17 @@
+{
+  "cell": "memristor_m1",
+  "kind": "manual",
+  "pins": [
+    {"name": "A", "x": 0, "y": -30, "side": "top"},
+    {"name": "B", "x": 0, "y": 30, "side": "bottom"}
+  ],
+  "graphics": [
+    {"type": "polyline", "points": [[0, -30], [0, -15]]},
+    {"type": "polyline", "points": [[0, 15], [0, 30]]},
+    {"type": "polyline", "points": [[-15, -15], [15, -15], [15, 15], [-15, 15], [-15, -15]]},
+    {"type": "line", "points": [[-15, 15], [15, -15]]},
+    {"type": "circle", "center": [15, -15], "r": 3, "fill": "background"},
+    {"type": "circle", "center": [-15, 15], "r": 3, "fill": "background", "width": 0},
+    {"type": "polyline", "points": [[15, -15], [15, -19], [11, -19]]}
+  ]
+}
