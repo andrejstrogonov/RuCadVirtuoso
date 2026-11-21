@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rucadvirtuoso"
+version = "0.1.0"
+description = "RuCadVirtuoso MVP — схематический редактор и симулятор"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "pydantic>=2.7",
+    "PySide6>=6.7",
+    "pyqtgraph>=0.13",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-qt",
+    "hypothesis>=6.100",
+    "ruff",
+    "mypy",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "UP007"]
+# Легаси-модули — источник уравнений для core-плана; удаляются этим планом
+# (задача 10 Core-refactor-plan). До переноса в rcad.devices — исключены из линта.
+"src/rcad/device.py" = ["ALL"]
+"src/rcad/circuit.py" = ["ALL"]
+"src/rcad/analyzer.py" = ["ALL"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+# Виджеты Qt приходят с неполными стабами; из жёсткой проверки исключаем их.
+# api.py остаётся проверяемым (Qt-free). Легаси-модули — источник core-плана.
+exclude = [
+    "ui[\\\\/]app[.]py$",
+    "ui[\\\\/]scene[\\\\/]",
+    "ui[\\\\/]widgets[\\\\/]",
+    "ui[\\\\/]dialogs[\\\\/]",
+    "ui[\\\\/]plots[\\\\/]",
+    "(device|circuit|analyzer)[.]py$",
+]
+
+[[tool.mypy.overrides]]
+# ядро реализуется core-планом; до его появления импорты не типизированы
+module = ["rcad.core.analyses"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Qt-виджеты: PySide6-стабы неполны. Проверяются приёмкой ui_smoke (runtime);
+# статическая проверка — только Qt-free-ядро (services, schemas, rcad.ui.api).
+module = [
+    "rcad.ui.app",
+    "rcad.ui.scene",
+    "rcad.ui.widgets",
+    "rcad.ui.widgets.*",
+    "rcad.ui.dialogs",
+    "rcad.ui.dialogs.*",
+    "rcad.ui.plots",
+    "rcad.ui.plots.*",
+]
+follow_imports = "skip"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+qt_api = "pyside6"
+markers = [
+    "tcase(id): обязательный тест-кейс ТЗ п. 12.2 (T1–T15) или сценарий п. 3 (S1–S4)",
+    "perf: замер производительности на эталонной конфигурации (ТЗ п. 13)",
+    "ui_smoke: UI-smoke уровень (п. 12.1 ТЗ), offscreen",
+]
