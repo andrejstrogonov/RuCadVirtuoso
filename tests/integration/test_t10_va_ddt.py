@@ -7,9 +7,9 @@ import math
 
 import pytest
 
-from conftest import EXAMPLES, requires_core
+from conftest import EXAMPLES, requires_core, requires_va
 
-pytestmark = [pytest.mark.tcase("T10"), requires_core]
+pytestmark = [pytest.mark.tcase("T10"), requires_core, requires_va]
 
 VA_SOURCE = EXAMPLES / "va_custom_model" / "va_nl_cap.va"
 

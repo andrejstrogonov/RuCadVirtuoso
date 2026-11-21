@@ -2,4 +2,4 @@
 
 __version__ = "0.1.0"
 
-__all__ = ["device", "circuit", "analyzer"]
+__all__ = ["diagnostics", "schemas", "services", "ui"]

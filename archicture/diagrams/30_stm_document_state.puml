@@ -1,0 +1,41 @@
+@startuml 30_stm_document_state
+title State Machine: документ проекта (FR-PRS-001…004, FR-CEL-007)
+
+state "Clean" as CLEAN
+state "Dirty" as DIRTY
+state "Autosaved" as AUTOSAVED
+state "Saving" as SAVING
+state "Closing" as CLOSING
+state "Recovering" as RECOVERING
+
+[*] --> CLEAN : open проект / после save
+
+CLEAN --> DIRTY : пользовательская правка (QUndoCommand)
+DIRTY --> DIRTY : любая новая правка
+DIRTY --> AUTOSAVED : таймер 5 мин (FR-PRS-001)\n autosave (.tmp → os.replace)
+AUTOSAVED --> AUTOSAVED : повторный таймер (без изменений — mtime не меняется)
+AUTOSAVED --> DIRTY : новая правка после автосохранения
+AUTOSAVED --> SAVING : явный save (FR-CEL-007)
+DIRTY --> SAVING : явный save
+SAVING --> AUTOSAVED : успех + удаление recovery.json (FR-PRS-004)
+SAVING --> SAVING : сбой записи (tmp не заменяет файл) → retry
+
+DIRTY --> CLOSING : закрытие окна
+AUTOSAVED --> CLOSING : закрытие окна
+CLEAN --> CLOSING : закрытие окна
+
+CLOSING --> CLEAN : «Сохранить» (FR-PRS-002)
+CLOSING --> [*] : «Не сохранять»
+CLOSING --> DIRTY : «Отмена» — окно остаётся открытым
+
+DIRTY --> RECOVERING : аварийное завершение (recovery.json найден)
+AUTOSAVED --> RECOVERING : аварийное завершение
+RECOVERING --> DIRTY : «Восстановить» (FR-PRS-003)
+RECOVERING --> CLEAN : «Отклонить» — состояние последнего save
+
+note bottom of SAVING
+  Атомарность: запись `<file>.tmp` → os.replace.
+  При прерывании файл всегда валиден (FR-CEL-007).
+end note
+
+@enduml

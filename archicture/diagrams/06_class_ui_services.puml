@@ -3,92 +3,103 @@ title Классы сервисов и UI (MVP)
 
 package "rcad.services" {
   class ProjectService {
-    +open(path) : ProjectDoc
+    +create(path, name) : ProjectDoc
+    +add_cell(doc, schematic) : CellSchema
     +save(doc)
-    +autosave(doc)
-    +recover(path) : ProjectDoc | None
+    +autosave(doc, changed_cells)
+    +open(path) : ProjectDoc
+    +path(doc) : Path
   }
   class ProjectDoc {
     +root: Path
-    +project: ProjectSchema
+    +schema: ProjectSchema
     +cells: dict[str, CellSchema]
-    +symbols: dict[str, SymbolSchema]
+    +model_manager: ModelManager
+    +diagnostics: list[Diagnostic]
+    +cell_names : list[str]
+    +cell(name) : CellSchema
   }
-  class Netlister {
-    +to_netlist(cell: CellSchema) : str
-    +from_netlist(text) : CellSchema
+  class Netlister <<module-функции>> {
+    +netlist_for(project, cell, dc/tran/ac) : str
+    +export_netlist(project, cell) : str
+    +import_netlist(project, text, main) : list[Diagnostic]
+    +resolve_bindings(project, cell)
+    +next_net_name(existing) : str
+    +validate_net_name(name, existing)
   }
   class ModelManager {
-    +library() : list[ModelEntry]
-    +register_va(dll, meta)
+    +library_names() : list[str]
+    +entry(cell) : ModelEntry
+    +symbol(cell) : SymbolSchema
+    +symbol_for(name) : SymbolSchema
     +params_for(master) : list[ParamSpec]
+    +panel_cells() : list[ModelEntry]
+    +reload()
   }
-  class SimulatorService {
-    +run(spec) : Result
+  class SimulatorService <<Qt, dialogs>> {
+    +run(runner)
     +cancel()
     +signals: progress, finished, failed
   }
-  class VaImportService {
+  class VaImportService <<вне фазы (E2)>> {
     +import_file(path) : ModelEntry
     +diagnostics : list[Diagnostic]
   }
   class ResultStore {
     +put(result) : str
-    +get(id) : Result
-    +export_csv(id, path)
-  }
-  class SettingsService {
-    +cl_exe_path: Path | None
-    +antialias_over_500: bool
-    +maxstep_default_ratio: float
+    +get(id) : StoredResult
+    +export_csv(result, names, path) : Path
   }
   ProjectService --> ProjectDoc
   ProjectService --> ProjectSchema
-  Netlister --> CellSchema
-  SimulatorService ..> SimulatorRunner
-  SimulatorService --> ResultStore
-  VaImportService --> ModelManager
-  VaImportService ..> VaCompiler
+  ProjectService --> ModelManager
+  Netlister --> ProjectDoc
+  Netlister --> ModelManager
+  ResultStore --> ResultMeta
 }
 
-package "rcad.ui" {
+package "rcad.ui (PySide6)" {
+  class CanvasApi <<Qt-free фасад>> {
+    +canvas_state(cell) : dict
+    +place(inst, master, x, y, cell)
+    +set_params(cell, inst, params)
+    +instance_params(cell, inst) : dict
+    +build_netlist(cell, dc/tran/ac) : str
+  }
   class MainWindow {
     +library: LibraryPanel
     +scene: SchematicScene
     +properties: PropertyPanel
     +log: MessageLog
+    +open_project(path)
   }
   class SchematicScene {
-    +place(symbol, pos)
-    +add_wire(a, b)
-    +check() : list[Diagnostic]
+    +sync()
+    +place(instance)
+    +snap(x, y)
     +undo_stack: QUndoStack
   }
   class LibraryPanel
   class PropertyPanel {
     +bind(instance)
-    +validate(params) : bool
+    +show_params(specs, values)
   }
   class HierarchyNavigator
-  class NetlistView
+  class NetlistView {
+    +refresh_cell(cell)
+  }
   class AnalysisDialog {
     +build_spec() : AnalysisSpec
     +selected_series() : list[str]
   }
   class PlotWindow {
-    +add_panel(series)
-    +cursor_values() : dict
+    +plot_names(series)
     +export_png(path)
-    +export_csv(path)
+    +export_csv(names, path)
   }
   class MessageLog {
     +append(diag: Diagnostic)
-    +filter(severity)
-  }
-  class ImportVaWizard {
-    +validate()
-    +compile()
-    +create_symbol(meta)
+    +clear_log()
   }
   class UndoCommand <<QUndoCommand>>
 
@@ -97,21 +108,24 @@ package "rcad.ui" {
   MainWindow *-- PropertyPanel
   MainWindow *-- MessageLog
   MainWindow --> HierarchyNavigator
+  MainWindow --> NetlistView
   MainWindow --> AnalysisDialog
-  AnalysisDialog ..> SimulatorService
-  PlotWindow ..> ResultStore
   SchematicScene --> UndoCommand
-  ImportVaWizard ..> VaImportService
-  PropertyPanel ..> ModelManager
-  ImportVaWizard ..> SettingsService
 }
 
-package "rcad.veriloga.cache" {
-  class VaCompiler {
-    +hash(va_bytes) : str
-    +compile(va_path) : Path
-    +compiler_available() : bool
-  }
-  VaCompiler ..> SettingsService
-}
+' Связи UI-API → сервисы (Qt-free): модульные функции
+CanvasApi ..> Netlister : netlist_for / resolve_bindings
+CanvasApi ..> ProjectDoc
+CanvasApi ..> ModelManager : entry / params_for
+AnalysisDialog ..> ProjectDoc
+AnalysisDialog ..> SimulatorService
+PlotWindow ..> ResultStore
+SchematicScene ..> CanvasApi : геометрия выводов
+PropertyPanel ..> ModelManager : ParamSpec
+
+note bottom of CanvasApi
+  Qt-free: rcad.ui.api и rcad.services не импортируют
+  PySide6 (проверяет tests/unit/test_layering.py).
+end note
+
 @enduml

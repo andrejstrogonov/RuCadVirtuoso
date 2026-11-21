@@ -32,7 +32,7 @@ def test_rc_charge_matches_analytic():
     from rcad.core.analyses import run_analysis
 
     result = run_analysis(NETLIST, ".tran")
-    for t, v in zip(result["time"], result["V(out)"]):
+    for t, v in zip(result["time"], result["V(out)"], strict=False):
         assert abs(v - analytic(t)) <= 1e-3 * max(abs(analytic(t)), 1e-3)
 
 
@@ -42,7 +42,7 @@ def test_first_point_is_zero_and_monotonic():
     result = run_analysis(NETLIST, ".tran")
     values = list(result["V(out)"])
     assert abs(values[0]) <= 1e-12
-    assert all(b >= a - 1e-12 for a, b in zip(values, values[1:]))
+    assert all(b >= a - 1e-12 for a, b in zip(values, values[1:], strict=False))
 
 
 def test_no_step_exceeds_default_maxstep():
@@ -50,5 +50,5 @@ def test_no_step_exceeds_default_maxstep():
     from rcad.core.analyses import run_analysis
 
     result = run_analysis(NETLIST, ".tran")
-    steps = [b - a for a, b in zip(result["time"], result["time"][1:])]
+    steps = [b - a for a, b in zip(result["time"], result["time"][1:], strict=False)]
     assert steps and max(steps) <= 10e-6 / 100 + 1e-18

@@ -13,6 +13,8 @@ package "rcad.ui" {
   [MessageLog] as LOG
   [ImportVaWizard] as VAWIZ
   [ShortcutMap] as KEYS
+  [CommandPalette] as CMD
+  [CanvasApi\n(Qt-free facade)] as API
 
   MW --> LIB
   MW --> SCENE
@@ -24,7 +26,9 @@ package "rcad.ui" {
   ADLG --> PLOT
   KEYS --> SCENE
   KEYS --> ADLG
+  CMD --> SCENE
   VAWIZ --> LIB
+  API --> SCENE : схема-API без Qt
 }
 
 package "rcad.services" {
@@ -34,22 +38,18 @@ package "rcad.services" {
   [SimulatorService] as SIM
   [VaImportService] as VAI
   [ResultStore] as RS
-  [SettingsService] as SET
 }
 
-SCENE --> PS : изменения документа\n(QUndoCommand)
-LIB --> MM : список символов
-PROPS --> MM : ParamSpec / валидация
+SCENE --> API : изменения документа\n(QUndoCommand → pydantic)
+PROPS --> API : set_params / instance_params
 HIER --> PS : cells/
-NLV --> NL : netlist текущей ячейки
+NLV --> NL : export/import\n(module-функции)
 ADLG --> SIM : run(AnalysisSpec)
 SIM --> PLOT : Result по сигналу finished
 PLOT --> RS : экспорт CSV/PNG
 VAWIZ --> VAI : import_file(.va)
-VAWIZ --> SET : путь cl.exe
 LOG <-- PS : diagnostics
 LOG <-- SIM : diagnostics
-LOG <-- VAI : diagnostics
 
 note bottom of SCENE
   Модель документа — pydantic-объекты, сцена — её
@@ -59,9 +59,15 @@ note bottom of SCENE
   перерисовка ≤ 30 fps (NFR-PERF-UI).
 end note
 
+note bottom of API
+  Qt-free: services и ui/api не импортируют PySide6
+  (проверяет tests/unit/test_layering.py).
+end note
+
 note bottom of SIM
   Расчёт в QThread; обмен только сигналами
-  progress/finished/failed; отмена — флаг в ядре.
+  progress/finished/failed; отмена — discard результата
+  воркера (core-level cancel-флаг отложен).
 end note
 
 @enduml

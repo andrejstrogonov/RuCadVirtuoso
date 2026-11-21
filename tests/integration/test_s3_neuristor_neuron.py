@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import requires_core
+from conftest import requires_core, requires_services
 
-pytestmark = [pytest.mark.tcase("S3"), requires_core]
+pytestmark = [pytest.mark.tcase("S3"), requires_core, requires_services]
 
 CELL = "lif_neuron"
 
@@ -54,7 +54,7 @@ def project(tmp_path):
 
 def spike_count(result) -> int:
     v = list(result["V(n_spike)"])
-    return sum(1 for a, b in zip(v, v[1:]) if a < 1.0 <= b)
+    return sum(1 for a, b in zip(v, v[1:], strict=False) if a < 1.0 <= b)
 
 
 def test_schematic_has_four_instances_and_three_nets(project) -> None:
@@ -67,6 +67,7 @@ def test_schematic_has_four_instances_and_three_nets(project) -> None:
 
 def test_transient_shows_spikes(project) -> None:
     from rcad.core.analyses import run_analysis
+
     from rcad.services.netlister import netlist_for
 
     netlist = netlist_for(project[1], CELL, tran="1n 20u")
@@ -75,6 +76,7 @@ def test_transient_shows_spikes(project) -> None:
 
 def test_frequency_grows_with_input_current(project) -> None:
     from rcad.core.analyses import run_analysis
+
     from rcad.services.netlister import netlist_for
     from rcad.ui.api import CanvasApi
 

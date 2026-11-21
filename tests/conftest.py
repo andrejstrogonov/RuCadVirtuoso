@@ -11,8 +11,8 @@ from __future__ import annotations
 import csv
 import importlib.util
 import math
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import pytest
 
@@ -22,20 +22,53 @@ GOLDEN = Path(__file__).resolve().parent / "golden"
 EXAMPLES = ROOT / "examples"
 
 CORE_MODULE = "rcad.core.analyses"
+SERVICES_MODULE = "rcad.services"
+UI_MODULE = "rcad.ui"
+VA_MODULE = "rcad.veriloga"
+
+
+def _module_available(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ModuleNotFoundError, ValueError):
+        return False
 
 
 def core_available() -> bool:
     """Ядро считается доступным, когда найдены и модуль, и функция `run_analysis`."""
-    try:
-        spec = importlib.util.find_spec(CORE_MODULE)
-    except ModuleNotFoundError:
-        return False
-    return spec is not None
+    return _module_available(CORE_MODULE)
+
+
+def services_available() -> bool:
+    return _module_available(SERVICES_MODULE)
+
+
+def ui_available() -> bool:
+    return _module_available(UI_MODULE)
+
+
+def va_available() -> bool:
+    return _module_available(VA_MODULE)
 
 
 requires_core = pytest.mark.skipif(
     not core_available(),
     reason=f"{CORE_MODULE} не реализован (этап E0): тест написан, но не исполняется",
+)
+
+requires_services = pytest.mark.skipif(
+    not services_available(),
+    reason=f"{SERVICES_MODULE} не реализован (этап E3): сервисы отсутствуют",
+)
+
+requires_ui = pytest.mark.skipif(
+    not ui_available(),
+    reason=f"{UI_MODULE} не реализован (этап E3): UI отсутствует",
+)
+
+requires_va = pytest.mark.skipif(
+    not va_available(),
+    reason=f"{VA_MODULE} не реализован (этап E2): Verilog-A конвейер отсутствует",
 )
 
 
@@ -55,7 +88,7 @@ def max_rel_error(actual: list[float], expected: list[float]) -> float:
     if len(actual) != len(expected):
         raise AssertionError(f"длины рядов не совпадают: {len(actual)} != {len(expected)}")
     worst = 0.0
-    for a, e in zip(actual, expected):
+    for a, e in zip(actual, expected, strict=False):
         scale = max(abs(e), 1e-12)
         worst = max(worst, abs(a - e) / scale)
     return worst

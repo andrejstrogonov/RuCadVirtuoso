@@ -1,0 +1,36 @@
+@startuml 31_act_run_analysis_ui
+title Activity: запуск анализа из UI (FR-SIM-001…005, Generic analysis через QThread)
+
+actor "Инженер" as U
+participant "AnalysisDialog" as ADLG
+participant "SimulatorService\n(QThread)" as SIM
+participant "core.analyses\nrun_analysis" as CORE
+participant "Result" as RES
+participant "PlotWindow\n(pyqtgraph)" as PLOT
+participant "MessageLog" as LOG
+
+U -> ADLG : выбрать тип (OP/DC/TRAN/AC), развёртку,\nвеличины (узлы/токи/SV @inst.x) — FR-SIM-001/002
+ADLG -> ADLG : validate() (нечисловые/недопустимые отклоняются — FR-SIM-003)
+alt невалидно
+  ADLG --> U : сообщение у поля; анализ не стартует
+else валидно
+  U -> ADLG : OK
+  ADLG -> SIM : run(netlist_for(cell, directive))
+  SIM -> SIM : QThread стартует (UI отзывчив)
+  SIM -> CORE : run_analysis(netlist, spec)
+  CORE --> SIM : Result / AnalysisError
+  SIM --> LOG : progress (10..100%), диагностики
+  SIM --> PLOT : finished(Result) — открыть окно графиков
+
+  alt сходимость/модельная ошибка
+    SIM -> LOG : failed → error (FR-SIM-005),\nUI не падает (NFR-ROB-001)
+  else успех
+    PLOT -> PLOT : панели по величинам (FR-PLT-002),\nкурсор (PLT-003), лог-оси (PLT-004)
+    PLOT --> U : экспорт PNG/CSV (PLT-005)
+  end
+
+  U -> SIM : Отмена (FR-SIM-004)
+  SIM -> SIM : discard результата воркера;\ncore-level cancel-флаг — отложено (см. план, Риски)
+end
+
+@enduml

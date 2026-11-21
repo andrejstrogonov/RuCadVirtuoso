@@ -1,41 +1,48 @@
-@startuml container
-!include url https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
-title RuCadVirtuoso MVP — Containers (AD-01: Core → Services → UI)
+@startuml
+title RuCadVirtuoso MVP — Containers (C4 уровня 2, AD-01: Core → Services → UI)
 
-Person(engineer, "Инженер", "Пользователь приложения")
+actor "Инженер" as USER
 
-System_Boundary(rucad, "RuCadVirtuoso.exe (PyInstaller one-folder, embedded Python 3.12)") {
+package "RuCadVirtuoso.exe (PyInstaller one-folder, embedded Python 3.12)" {
 
-  Container(ui, "UI Layer", "PySide6 6.7+, pyqtgraph", "Главное окно, SchematicScene, панель свойств,\nдиалог анализа, просмотрщик графиков, лог")
-  Container(svc, "Application Services", "Python 3.12", "ProjectService, Netlister, ModelManager,\nSimulatorService, VaImportService, ResultStore")
-  Container(core, "Simulation Core", "Python + NumPy + SciPy", "Netlist-парсер, flatten иерархии, сборка MNA/DAE,\nНьютон, интеграторы, анализы OP/DC/TRAN/AC")
-  Container(devices, "Device Library", "Python + NumPy", "MOSFET, мемристор M1/M2, мемтранзистор GEM,\nнейристор N1/N2, примитивы R/C/L/источники")
-  Container(va, "Verilog-A Toolchain", "Python codegen + ctypes", "Lexer/parser/semantics, C++ codegen,\nвызов cl.exe, загрузка DLL через C ABI")
-  ContainerDb(store, "Project Store", "Каталог .rcad/ (JSON, pydantic)", "project.json, cells/, symbols/, models/,\nveriloga/, cache/")
-  Container(logs, "Diagnostics & Logs", "%APPDATA%/RuCadVirtuoso/logs/", "Единые коды диагностик, ротация логов,\nкомпиляторный лог")
-
-  Container(va_dll, "Скомпилированные VA-модели", "DLL (C ABI, va_abi v1)", "va_eval_static/dynamic/state, метаданные модели")
+  component "UI Layer\nPySide6 6.7+, pyqtgraph\nMainWindow, SchematicScene, PropertyPanel,\nAnalysisDialog, PlotWindow, MessageLog, CommandPalette" as UI
+  component "CanvasApi\nQt-free фасад (NFR-TST-001)\ncanvas_state / place / set_params / build_netlist" as API
+  component "Application Services\nPython 3.12\nProjectService, Netlister (module-functions),\nModelManager, SimulatorService, ResultStore" as SVC
+  component "Simulation Core\nPython + NumPy + SciPy\nnetlist, circuit, MNA/DAE, Newton,\nинтеграторы, анализы OP/DC/TRAN/AC\nprecheck" as CORE
+  component "Device Library\nPython + NumPy\nMOSFET, мемристор M1/M2, GEM,\nнейристор N1/N2, примитивы" as DEV
+  component "Verilog-A Toolchain\nPython codegen + ctypes\nlexer/parser/semantics, C++ codegen,\nвызов cl.exe, загрузка DLL" as VATOOL
+  database "Project Store\nкаталог .rcad/ (JSON, pydantic)\nproject.json, cells/, symbols/,\nmodels/, veriloga/, cache/" as STORE
+  component "Diagnostics & Logs\n%APPDATA%/RuCadVirtuoso/logs/\nединые коды, ротация логов" as LOGS
+  component "Скомпилированные VA-модели\nDLL (C ABI v1)\nva_eval_static/dynamic/state" as VADLL
+  component "VA Compiler\nMSVC cl.exe (внешний)" as MSVC
 }
 
-System_Ext(msvc, "MSVC Build Tools", "cl.exe", "Компилятор для VA")
-System_Ext(ngspice, "ngspice", "Эталон (офлайн)", "Генерация golden-данных")
+USER --> UI
+UI --> API : Qt-free контракт холста
+API --> SVC : команды, проект, запуск анализа
+SVC --> CORE : run_analysis(netlist, directive)\nprecheck
+CORE --> DEV : DeviceModel: i_el/G, q_el/C, dx/dt
+SVC --> VATOOL : импорт .va, регистрация модели
+VATOOL --> MSVC : компилирует C++ → DLL
+VATOOL --> VADLL : ctypes.CDLL
+CORE --> VADLL : те же stamp-вызовы (VaDevice)
+SVC --> STORE : сохраняет/загружает проект
+UI --> LOGS : показывает диагностики
+CORE --> LOGS : пишет warning/error
 
-Rel(engineer, ui, "Работает со схемой", "Qt")
-Rel(ui, svc, "Команды, запросы проекта, запуск анализа", "Python API")
-Rel(svc, core, "run_analysis(circuit, spec)", "Python API")
-Rel(core, devices, "Сборка вкладов i_el/G, q_el/C, SV", "DeviceModel protocol")
-Rel(svc, va, "Импорт .va, регистрация модели")
-Rel(va, msvc, "Компилирует C++ → DLL", "subprocess")
-Rel(va, va_dll, "Загружает и вызывает", "ctypes.CDLL")
-Rel(core, va_dll, "Те же stamp-вызовы через VaDevice", "ctypes")
-Rel(svc, store, "Сохраняет/загружает проект", "JSON")
-Rel(ui, logs, "Показывает диагностики")
-Rel(core, logs, "Пишет warning/error")
-Rel(ngspice, store, "Эталонные CSV (tests/golden/)", "CI, офлайн")
+note right of CORE
+  Ядро не импортирует PySide6 —
+  проверяется тестом импортов в CI (NFR-TST-002).
+end note
 
-note right of core
-  Ядро не импортирует PySide6 — проверяется
-  тестом импортов в CI (NFR-TST-002).
+note right of API
+  Qt-free: services и ui/api не импортируют PySide6;
+  S1–S4 исполняются через CanvasApi (NFR-TST-001).
+end note
+
+note bottom of STORE
+  cache/ не входит в VCS;
+  при переносе проекта модели пересобираются из .va.
 end note
 
 @enduml

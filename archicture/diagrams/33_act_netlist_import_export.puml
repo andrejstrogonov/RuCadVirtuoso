@@ -1,0 +1,35 @@
+@startuml 33_act_netlist_import_export
+title Activity: netlist-вью — экспорт и импорт (FR-NLV-001…005)
+
+actor "Инженер" as U
+participant "NetlistView\n(read-only)" as NLV
+participant "Netlister\n(module functions)" as NL
+participant "ProjectService" as PS
+participant "ProjectDoc" as DOC
+participant "MessageLog" as LOG
+
+' --- Экспорт (просмотр и файл) ---
+U -> NLV : вкладка netlist текущей иерархии
+NLV -> NL : export_netlist(project, cell)
+NL -> DOC : hierarchy (subckt-заглушки),\ncard (R/C/V/X/M), include, параметры
+DOC --> NLV : текст без директивы (FR-NLV-001)
+NLV -> NLV : read-only, автообновление при изменении схемы (FR-NLV-002)
+
+U -> NLV : «Экспорт в файл» (UTF-8)
+NLV --> U : файл .cir; повторно загружается ядром (FR-NLV-003)
+
+' --- Импорт ---
+U -> NLV : «Импорт netlist...»
+NLV -> NL : import_netlist(project, text, main)
+NL -> NL : .subckt → ячейки; X → инстансы; .include → запись библиотеки
+NL -> DOC : новые ячейки (иерархия создана — FR-NLV-004)
+DOC --> NLV : ячейки доступны в редакторе
+
+alt ошибка разбора
+  NL --> LOG : NetlistError file:line:col (FR-NLV-005)
+  NL -> DOC : проект НЕ изменён (контракт импорта)
+else включил non-instantiated dummy include
+  NL --> LOG : warning (не блокатор)
+end
+
+@enduml

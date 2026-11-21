@@ -8,10 +8,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class Level(str, Enum):
+class Level(StrEnum):
     """Уровень теста по ТЗ п. 12.1."""
 
     UNIT = "unit"

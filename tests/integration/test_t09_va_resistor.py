@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import EXAMPLES, requires_core
+from conftest import EXAMPLES, requires_core, requires_va
 
-pytestmark = [pytest.mark.tcase("T9"), requires_core]
+pytestmark = [pytest.mark.tcase("T9"), requires_core, requires_va]
 
 VA_SOURCE = EXAMPLES / "va_custom_model" / "va_resistor.va"
 
@@ -42,14 +42,14 @@ def test_va_model_is_registered_in_library() -> None:
 def test_va_and_native_agree_on_sweep() -> None:
     from rcad.core.analyses import run_analysis
 
-    netlist = """\
+    netlist = f"""\
 * T9: DC-развёртка, VA против нативного R
-.include "{va}"
+.include "{VA_SOURCE.as_posix()}"
 V1 in 0 DC 0
 X1 in 0 va_resistor r=1k
 .dc V1 0 1 0.1
 .end
-""".format(va=VA_SOURCE.as_posix())
+"""
     result = run_analysis(netlist, ".dc")
-    for v, i in zip(result["V(in)"], result.element("X1", "i")):
+    for v, i in zip(result["V(in)"], result.element("X1", "i"), strict=False):
         assert abs(-i - v / 1e3) <= 1e-9

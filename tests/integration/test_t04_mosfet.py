@@ -75,7 +75,7 @@ def test_golden_output_characteristic() -> None:
     )
     golden = list(read_golden("t04_mosfet_output.csv"))
     assert len(result["V(d)"]) == len(golden)
-    for actual, expected in zip(result.element("M1", "id"), golden):
+    for actual, expected in zip(result.element("M1", "id"), golden, strict=False):
         assert abs(actual - expected["id"]) <= 1e-3 * max(abs(expected["id"]), 1e-9)
 
 

@@ -46,7 +46,7 @@ def test_ten_pulses_give_monotonic_steps(tran) -> None:
     times, w = tran["time"], tran["@XMT.w"]
     ends = [10e-9 + n * 100e-9 for n in range(PULSES)]
     samples = [w[min(range(len(times)), key=lambda i: abs(times[i] - t))] for t in ends]
-    deltas = [b - a for a, b in zip(samples, samples[1:])]
+    deltas = [b - a for a, b in zip(samples, samples[1:], strict=False)]
     assert len(set(round(d, 12) for d in deltas)) > 1, "нет различимых ступеней"
     assert all(d >= -1e-9 for d in deltas) or all(d <= 1e-9 for d in deltas)
 
@@ -54,9 +54,9 @@ def test_ten_pulses_give_monotonic_steps(tran) -> None:
 def test_ids_steps_follow_state(tran) -> None:
     ids, w = tran["I(VD)"], tran["@XMT.w"]
     ends = [10e-9 + n * 100e-9 for n in range(PULSES)]
-    grid = list(zip(tran["time"], w, ids))
+    grid = list(zip(tran["time"], w, ids, strict=False))
     samples = [min(grid, key=lambda row: abs(row[0] - t)) for t in ends]
-    for (_, w_prev, i_prev), (_, w_next, i_next) in zip(samples, samples[1:]):
+    for (_, w_prev, i_prev), (_, w_next, i_next) in zip(samples, samples[1:], strict=False):
         assert (w_next - w_prev) * (i_next - i_prev) >= -1e-15
 
 

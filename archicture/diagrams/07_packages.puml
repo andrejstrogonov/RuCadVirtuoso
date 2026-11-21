@@ -21,6 +21,7 @@ package "src" {
     component [abi] as ABI
     component [services] as SVC
     component [ui] as UI
+    component [ui.api\n(Qt-free)] as UIAPI
     component [cli] as CLI
   }
   component [main.py] as MAIN
@@ -33,7 +34,8 @@ artifact "cache/<sha256>.dll" as DLL
 
 MAIN --> UI
 MAIN --> CLI
-UI --> SVC
+UI --> UIAPI
+UIAPI --> SVC
 CLI --> SVC
 
 SVC --> ANALYSES
@@ -63,7 +65,8 @@ ABI --> DLL
 
 legend right
   **Разрешённые направления (вниз):**
-  ui → services → core, abi, veriloga
+  ui → ui.api → services → core, abi, veriloga
+  ui.api, services → schemas, diagnostics
   analyses → solver, integ, mna, circuit
   mna → circuit, core.devices
   circuit → netlist
@@ -71,6 +74,7 @@ legend right
 
   **Запрещено (CI, NFR-TST-002):**
   core/devices/veriloga → PySide6, pyqtgraph, rcad.ui
+  ui.api / services → PySide6 (Qt-free, тест импортов)
   rcad.devices → rcad.analyses
   ui → core.mna, core.solver (только через services)
 

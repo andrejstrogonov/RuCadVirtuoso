@@ -11,9 +11,9 @@ import json
 
 import pytest
 
-from conftest import requires_core
+from conftest import requires_core, requires_services
 
-pytestmark = [pytest.mark.tcase("S1"), requires_core]
+pytestmark = [pytest.mark.tcase("S1"), requires_core, requires_services]
 
 CELL = "memristor_iv"
 
@@ -76,6 +76,7 @@ def test_project_saved_and_reopened(project) -> None:
 
 def test_transient_gives_loop_and_state_trace(project) -> None:
     from rcad.core.analyses import run_analysis
+
     from rcad.services.netlister import netlist_for
 
     netlist = netlist_for(project[1], CELL, tran="1m 2 0 1m")
@@ -87,6 +88,7 @@ def test_transient_gives_loop_and_state_trace(project) -> None:
 
 def test_both_series_are_exported_to_csv(project, tmp_path) -> None:
     from rcad.core.analyses import run_analysis
+
     from rcad.services.netlister import netlist_for
     from rcad.services.result_store import export_csv
 

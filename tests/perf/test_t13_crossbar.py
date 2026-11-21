@@ -72,4 +72,4 @@ def test_state_variables_are_continuous() -> None:
             series = result[f"@X{row}_{col}.x"]
             assert all(math.isfinite(x) for x in series)
             assert all(-1e-12 <= x <= 1.0 + 1e-12 for x in series)
-            assert max(abs(b - a) for a, b in zip(series, series[1:])) < 0.1
+            assert max(abs(b - a) for a, b in zip(series, series[1:], strict=False)) < 0.1

@@ -1,0 +1,37 @@
+@startuml 32_seq_undo_redo
+title Sequence: undo/redo как последовательность команд (FR-SEL-003…005, FR-PRP-004)
+
+actor "Инженер" as U
+participant "SchematicScene" as SCENE
+participant "QUndoStack\n(per-cell, ≥50)" as UNDO
+participant "UndoCommand\n(replace/place/delete)" as CMD
+participant "CellSchema\n(pydantic)" as CELL
+participant "ProjectService" as PS
+participant "AutosaveTimer" as AS
+
+U -> SCENE : действие (rotate/move/set_param/delete/wire)
+SCENE -> CMD : create(старое, новое состояние)
+SCENE -> UNDO : push(command)
+UNDO -> CMD : redo()
+CMD -> CELL : model_copy(новые поля) → новая ячейка
+CELL --> SCENE : scene.sync() — перерисовка
+SCENE -> SCENE : dirty = true
+
+U -> SCENE : Ctrl+Z
+SCENE -> UNDO : undo()
+UNDO -> CMD : undo()
+CMD -> CELL : восстановить прежние поля
+CELL --> SCENE : scene.sync()
+SCENE -> SCENE : dirty = true (изменено относительно save)
+
+note over UNDO
+  История привязана к ячейке (FR-SEL-005):
+  переход в другую ячейку не теряет стек текущего документа.
+  Лимит ≥ 50 шагов (FR-SEL-003).
+end note
+
+SCENE -> PS : autosave (по таймеру 5 мин, FR-PRS-001)
+PS -> PS : запись изменённых ячеек (tmp → replace)
+PS -> AS : recovery.json обновлён
+
+@enduml

@@ -51,13 +51,13 @@ def test_quality_factor(ac_result):
     peak = max(mags)
     level = peak / math.sqrt(2.0)
     freqs = ac_result["freq"]
-    above = [f for f, m in zip(freqs, mags) if m >= level]
+    above = [f for f, m in zip(freqs, mags, strict=False) if m >= level]
     bandwidth = above[-1] - above[0]
     assert abs(F0 / bandwidth - Q) <= 0.02 * Q
 
 
 def test_complex_output_matches_analytic(ac_result):
-    for f, v in zip(ac_result["freq"], ac_result["V(out)"]):
+    for f, v in zip(ac_result["freq"], ac_result["V(out)"], strict=False):
         expected = transfer(f)
         assert cmath.isclose(v, expected, rel_tol=1e-3, abs_tol=1e-9)
 

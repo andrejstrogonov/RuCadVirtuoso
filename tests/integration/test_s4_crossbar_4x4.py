@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import max_rel_error, requires_core
+from conftest import max_rel_error, requires_core, requires_services
 
-pytestmark = [pytest.mark.tcase("S4"), requires_core]
+pytestmark = [pytest.mark.tcase("S4"), requires_core, requires_services]
 
 HIERARCHICAL = """\
 * S4: кроссбар 4x4 через subckt
@@ -72,6 +72,7 @@ def test_hierarchy_exports_back_to_netlist(tmp_path) -> None:
 
 def test_four_column_currents_are_available(tmp_path) -> None:
     from rcad.core.analyses import run_analysis
+
     from rcad.services.netlister import import_netlist
     from rcad.services.project_service import ProjectService
 

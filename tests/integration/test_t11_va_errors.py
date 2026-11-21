@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import requires_core
+from conftest import requires_core, requires_va
 
-pytestmark = [pytest.mark.tcase("T11"), requires_core]
+pytestmark = [pytest.mark.tcase("T11"), requires_core, requires_va]
 
 SYNTAX_ERROR = """\
 `include "constants.vams"

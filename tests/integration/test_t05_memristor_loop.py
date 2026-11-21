@@ -40,8 +40,8 @@ def test_state_within_bounds(tran) -> None:
 def test_state_monotonic_on_first_half_period(tran) -> None:
     """При eta=1 и положительной полуволне x растёт монотонно до окна xp."""
     times, x = tran["time"], tran["@Xmem.x"]
-    rising = [(t, v) for t, v in zip(times, x) if t <= 0.5]
-    assert all(b >= a - 1e-9 for (_, a), (_, b) in zip(rising, rising[1:]))
+    rising = [(t, v) for t, v in zip(times, x, strict=False) if t <= 0.5]
+    assert all(b >= a - 1e-9 for (_, a), (_, b) in zip(rising, rising[1:], strict=False))
     assert rising[-1][1] > rising[0][1]
 
 
@@ -66,7 +66,7 @@ def test_current_peaks_against_golden(tran, threshold: float) -> None:
 
 
 def test_state_trace_against_golden(tran) -> None:
-    for x, row in zip(tran["@Xmem.x"], read_golden("t05_memristor_iv.csv")):
+    for x, row in zip(tran["@Xmem.x"], read_golden("t05_memristor_iv.csv"), strict=False):
         assert close(x, row["x"], reltol=1e-2, abstol=1e-6)
 
 
@@ -74,7 +74,7 @@ def test_current_equation_by_sign(tran) -> None:
     """FR-MEM-006: I = a1·x·sinh(b·V) при V ≥ 0 и a2·x·sinh(b·V) при V < 0."""
     a1 = a2 = 0.17
     b = 0.05
-    for v, x, i in zip(tran["V(top)"], tran["@Xmem.x"], tran["I(V1)"]):
+    for v, x, i in zip(tran["V(top)"], tran["@Xmem.x"], tran["I(V1)"], strict=False):
         amp = a1 if v >= 0 else a2
         expected = amp * x * math.sinh(b * v)
         assert abs(-i - expected) <= 1e-3 * max(abs(expected), 1e-12)

@@ -1,0 +1,109 @@
+@startuml 34_class_schemas_doc
+title Классы документной модели: pydantic-схемы проекта (ТЗ п. 6.1)
+
+class ProjectSchema {
+  + name : str
+  + format_version : int = 1
+  + libraries : list[str]
+}
+
+class CellSchema {
+  + name : str
+  + ports : list[PortSchema]
+  + instances : list[InstanceSchema]
+  + wires : list[WireSchema]
+  + junctions : list[JunctionSchema]
+  + hierarchy_children : list[str]
+  + net_names() : set[str]
+}
+
+class InstanceSchema {
+  + name : str
+  + master_cell : str
+  + x, y : int
+  + rotation : 0|90|180|270
+  + mirror : none|x|y
+  + params : dict[str, value]
+  + nodes : list[str]   // импорт S4
+}
+
+class WireSchema {
+  + net : str
+  + points : list[Point]
+}
+
+class PortSchema {
+  + name : str
+  + direction : in|out|inout|bi
+  + x, y : int
+}
+
+class JunctionSchema {
+  + x, y : int
+}
+
+class ModelEntry {
+  + cell : str
+  + role : device|primitive
+  + netlist_card : R|C|V|I|M|X
+  + params : dict
+  + include : str
+  + subckt : str | None
+  + pins : list[str]
+}
+
+class ParamSpec {
+  + name : str
+  + kind : real|int|choice
+  + default
+  + unit : str | None
+  + bounds : (float, float) | None
+  + validate_value(value)
+}
+
+' Analysis и Result
+class OpSpec
+class DcSpec {
+  + src, start, stop, step
+}
+class TranSpec {
+  + tstep, tstop, tstart, tmax
+}
+class AcSpec {
+  + sweep, points, fstart, fstop
+}
+class ResultMeta {
+  + analysis_type
+  + rows : int
+  + units : dict
+  + version : str
+  + provenance : str
+}
+
+ProjectSchema "1" o-- "0..*" CellSchema : cells/<name>.json
+CellSchema o-- "0..*" InstanceSchema
+CellSchema o-- "0..*" WireSchema
+CellSchema o-- "0..*" PortSchema
+CellSchema o-- "0..*" JunctionSchema
+
+ModelEntry "1" <-- "0..*" InstanceSchema : master_cell resolves
+ParamSpec "0..*" <-- ModelEntry : params → спецификации
+InstanceSchema --> ModelEntry : master_cell lookup (ModelManager)
+
+OpSpec <|-- AnalysisSpec
+DcSpec <|-- AnalysisSpec
+TranSpec <|-- AnalysisSpec
+AcSpec <|-- AnalysisSpec
+
+ResultMeta ..> OpSpec
+ResultMeta ..> DcSpec
+ResultMeta ..> TranSpec
+ResultMeta ..> AcSpec
+
+note bottom of CellSchema
+  Каноническая сериализация: `model_dump_json(exclude_none=True)`
+  в порядке объявления полей — reopen S1 даёт побайтово
+  идентичные `cells/<cell>.json` (NFR-TST-002).
+end note
+
+@enduml

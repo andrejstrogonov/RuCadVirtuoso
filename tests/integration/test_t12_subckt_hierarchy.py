@@ -56,6 +56,7 @@ def test_node_paths_are_preserved() -> None:
 def test_cyclic_subckt_is_rejected() -> None:
     """FR-NL-010: циклические ссылки — структурная ошибка, а не зависание."""
     from rcad.core.netlist import parse
+
     from rcad.diagnostics import NetlistError
 
     cyclic = """\

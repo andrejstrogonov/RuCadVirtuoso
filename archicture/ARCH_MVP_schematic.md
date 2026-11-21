@@ -5,8 +5,26 @@
 | Документ | Архитектура решения и выбранные технологии для MVP (схемотехническая часть) |
 | Источники | `documentation/TZ_MVP_schematic.md` v1.0, `documentation/REQ_MVP_schematic.md`, `documentation/REQ_parts/*.md` |
 | Область | Только схемотехнический MVP по ТЗ п. 4.1 |
-| Статус | Черновик для ревью; решения по технологиям зафиксированы (см. §2) |
-| Репозиторий | Код отсутствует (`src/main.py` пуст); архитектура описывает целевую структуру |
+| Статус | Черновик для ревью; решения по технологиям зафиксированы (см. §2). Статус реализации — §0 |
+| Репозиторий | Реализованы ядро (`rcad.core.*`), сервисы (`rcad.services.*`) и Qt-free `rcad.ui.api.CanvasApi`; виджеты в `rcad.ui` (S1/S3/S4 — начиная с этапа E3) |
+
+---
+
+## 0. Статус реализации (этап E3)
+
+| Слой | Что реализовано | Где |
+|---|---|---|
+| Ядро | `rcad.core.*`: netlist, circuit, MNA, solver, integ, analyses (по core-плану) | `src/rcad/core/` |
+| Диагностика | `Diagnostic`, `DiagnosticCode`, `RcadError`/`NetlistError`/`AnalysisError`/`ParameterRangeError` | `src/rcad/diagnostics/` |
+| Схемы | `ProjectSchema`, `CellSchema` (+Instance/Wire/Port/Junction), `ModelEntry`/`ParamSpec`, `Op/DC/Tran/Ac`, `ResultMeta` | `src/rcad/schemas/` |
+| Сервисы | `ProjectService` (create/add/save/autosave/open), `ModelManager` (Libraries+Symbols), `Netlister` (netlist_for/export/import, геометрия соединений), `ResultStore` (export_csv) | `src/rcad/services/` |
+| UI-API | `CanvasApi` — Qt-free фасад: `canvas_state/place/set_params/instance_params/build_netlist` | `src/rcad/ui/api.py` |
+| Виджеты | `MainWindow`, `SchematicScene/View`, `LibraryPanel`, `PropertyPanel`, `HierarchyNavigator`, `NetlistView`, `MessageLog`, `CommandPalette`, `AnalysisDialog`, `SimulatorService` (QThread), `PlotWindow` (pyqtgraph) | `src/rcad/ui/` |
+| CLI / вход | `rcad.cli` (check/netlist/run/export), `src/main.py` (--cli/--headless/--project) | `src/rcad/cli.py`, `src/main.py` |
+
+Приёмка — сценарии S1/S3/S4 через `CanvasApi`; S2 и T9–T11 — по готовности
+`rcad.veriloga` (маркеры `requires_va`). Слоистая проверка — `tests/unit/test_layering.py`.
+Отмена расчёта без core-флага: QThread + discard (core-level cancel-флаг отложен).
 
 ---
 
@@ -119,35 +137,29 @@
 src/
   main.py                    # точка входа: argparse (--headless/--project/--cli) → ui.app или cli
   rcad/
-    __init__.py              # версия, VA_ABI_VERSION приложения
-    schemas/                 # pydantic-модели: project, cell, symbol, model, analysis, result-meta
-    diagnostics/             # коды диагностик, Diagnostic, DiagnosticBag, логгер, фильтр секретов
-    core/
-      netlist/               # tokens, lexer, parser, ast (Element, Directive), expressions, suffix
-      circuit/               # flatten (subckt → плоская), NodeIndex, InstanceIndex, name paths
-      mna/                   # structure (CSR pattern), system (F/J/Q), stamping, gmin
-      solver/                # newton, damping, gmin-stepping, source-stepping, pseudo-transient
-      integ/                 # bdf1, trap, lte control, breakpoints, interpolation
-      analyses/              # op, dc_sweep, tran, ac, runner (dispatch по AnalysisSpec)
-      devices/               # base (DeviceModel contract), registry, primitives/
-    devices/                 # builtin: mos, memristor_yakopcic, memristor_linear,
-                             #          memtransistor_gem, neuristor_n1, neuristor_n2
-    veriloga/                # lexer, parser, ast, semantics, codegen_cpp, compiler
-    abi/                     # va_abi (C headers), loader (ctypes), error bridge
-    services/                # project_service, netlister, model_manager, simulator, result_store
-    ui/                      # app, main_window, scene/, widgets/, dialogs/, plots/, log_panel
-    cli.py                   # headless-команды: check, netlist, run, export
-  cpp/
-    va_runtime/              # math, error bridge, launcher for cl.exe (compile.py)
+    __init__.py              # версия; __all__ = diagnostics/schemas/services/ui
+    schemas/                 # project, cell, symbol, model, analysis, result
+    diagnostics/             # коды, Diagnostic, DiagnosticBag, RcadError/NetlistError/…
+    core/                    # netlist, circuit, mna, solver, integ, analyses, devices (по core-плану)
+    devices/                 # builtin: mos, memristor_yakopcic, …, neuristor_n1/n2 (по core-плану)
+    services/                # project_service, model_manager, netlister, result_store
+    ui/
+      api.py                 # CanvasApi — Qt-free фасад (нет PySide6)
+      app.py                 # create_app() + MainWindow (доки, меню, автосохранение)
+      scene/                 # SchematicScene / View (сетка 10 px, undo/redo)
+      widgets/               # library_panel, property_panel, hierarchy, netlist_view,
+                             # message_log, command_palette
+      dialogs/               # analysis, simulator_service (QThread)
+      plots/                 # plot_window (pyqtgraph)
+    cli.py                   # check / netlist / run / export (UTF-8, exit≠0 при ошибке)
 tests/
-  unit/ integration/ golden/ perf/
+  unit/ integration/ golden/ perf/ ui_smoke/
   unit/test_layering.py
 data/
-  symbols/                   # JSON-символы встроенных приборов
+  Symbols/ Libraries/        # JSON-символы и технологические библиотеки (с заглавных букв)
 examples/
-  memristor_iv/ lif_neuron/ memtransistor_pulse/ crossbar_4x4/ va_custom_model/
-archicture/                  # этот документ, схемы
-installer.iss pyproject.toml README.md
+archicture/                  # этот документ, схемы (diagrams/release — канон)
+pyproject.toml README.md environment.yml .gitignore
 ```
 
 ---
@@ -300,21 +312,30 @@ ModelManager: регистрация модели, авто-символ по п
 
 ## 8. Редактор схем (UI)
 
+### 8.0 Qt-free UI-API
+
+`rcad/ui/api.py` — `CanvasApi(project)` предоставляет программный контракт сцены
+без PySide6 (NFR-TST-001): `canvas_state(cell)`, `place(inst, master, x, y)`,
+`set_params(cell, inst, params)` (валидация через `ParamSpec` → `ParameterRangeError`),
+`instance_params(cell, inst)`, `build_netlist(cell, dc/tran/ac)`. На нём исполняются
+S1/S3/S4 и строятся виджеты; `tests/unit/test_layering.py` запрещает Qt-импорт в
+`rcad.services` и `rcad.ui.api` (AD-01).
+
 ### 8.1 Компоненты и их зона ответственности
 
 | Компонент | Технология | Ответственность |
 |---|---|---|
 | `MainWindow` | `QMainWindow`, `QDockWidget` | Раскладка: библиотека слева, сцена в центре, свойства справа, логи снизу (`NFR-UI-001`) |
-| `LibraryPanel` | `QListView` + модель библиотеки | Примитивы, приборы, VA-модели; обновление после импорта (`FR-LIB-*`) |
-| `SchematicScene` | `QGraphicsScene` / `QGraphicsView` | Инстансы, провода, порты, сетка 10 px, снаппинг, выделение, undo/redo (`QUndoStack`) |
+| `LibraryPanel` | `QListWidget` + drag&drop | Примитивы, приборы из ModelManager; обновление после импорта (VA-секция скрыта до `rcad.veriloga`) |
+| `SchematicScene` | `QGraphicsScene` / `QGraphicsView` | Инстансы, провода, порты, сетка 10 px, снаппинг, выделение, undo/redo (`QUndoStack`, ≥ 50) |
 | `PropertyPanel` | `QFormLayout` + валидаторы | Имя инстанса, параметры из `ParamSpec` (тип/диапазон/единица), значения источников |
-| `HierarchyNavigator` | `QTreeView` + `QTabWidget` | Cell-иерархия, вход/выход, порты, авто- и редактируемый символ |
-| `NetlistView` | `QPlainTextEdit` (read-only) | Текстовый netlist текущей иерархии, экспорт/импорт |
-| `AnalysisDialog` | `QDialog` | Тип анализа, развёртка, выбор величин: узел, ток прибора, SV `@inst.x` |
-| `PlotWindow` | **pyqtgraph** `GraphicsLayoutWidget` | Несколько панелей, курсор со значениями, лог-шкалы X/Y, экспорт PNG/CSV |
-| `MessageLog` | `QTableView` + `QSortFilterProxyModel` | info/warning/error, коды (`W_STATE_CLIP`, `ConvergenceError`), переход к объекту |
-| `ImportVaWizard` | `QWizard` | Валидация `.va`, показ ошибок трансляции/компиляции, авто-символ, выбор `cl.exe` |
-| `CommandPalette`/`Shortcuts` | `QShortcut` | Ротация, зеркало, копирование, удаление, запуск анализа, сохранение |
+| `HierarchyNavigator` | `QTreeView`/`QTreeWidget` | Cell-иерархия, вход/выход, порты, метка «отсутствующий мастер» |
+| `NetlistView` | `QPlainTextEdit` (read-only) | Текстовый netlist текущей иерархии, автообновление, экспорт/импорт (`Netlister`) |
+| `AnalysisDialog` | `QDialog` | Тип анализа, развёртка (OP/DC/TRAN/AC), выбор величин: узел, ток прибора, SV `@inst.x` |
+| `SimulatorService` | `QThread` + сигналы | Запуск анализа, progress/finished/failed, отмена (discard воркера; core-флаг отложен) |
+| `PlotWindow` | **pyqtgraph** `GraphicsLayoutWidget` | Панели, курсор, лог-оси X/Y, экспорт PNG/CSV, несколько окон |
+| `MessageLog` | `QTableView` | info/warning/error, коды, фильтр, очистка, en+ru |
+| `CommandPalette`/`Shortcuts` | `QShortcut` | Ротация, зеркало, копирование, удаление, анализ, save, Ctrl+Z/Y (KBD-002 — не в полях ввода) |
 
 ### 8.2 Модель документа и undo/redo
 

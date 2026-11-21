@@ -8,17 +8,18 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import EXAMPLES, requires_core
+from conftest import EXAMPLES, requires_core, requires_va
 
-pytestmark = [pytest.mark.tcase("S2"), requires_core]
+pytestmark = [pytest.mark.tcase("S2"), requires_core, requires_va]
 
 VA_SOURCE = EXAMPLES / "va_custom_model" / "vteam.va"
 
 
 @pytest.fixture
 def imported(tmp_path):
-    from rcad.services.project_service import ProjectService
     from rcad.veriloga import VaImportService
+
+    from rcad.services.project_service import ProjectService
 
     service = ProjectService()
     project = service.create(tmp_path / "s2.rcad", name="s2")
@@ -64,6 +65,7 @@ def test_parameters_are_validated_against_range(imported) -> None:
 
 def test_dc_sweep_runs_on_imported_model(imported) -> None:
     from rcad.core.analyses import run_analysis
+
     from rcad.ui.api import CanvasApi
 
     _, project, outcome = imported

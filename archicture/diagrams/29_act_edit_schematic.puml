@@ -1,0 +1,43 @@
+@startuml 29_act_edit_schematic
+title Activity: редактирование схемы — размещение, провода, свойства, undo (FR-PLC, FR-WIR, FR-PRP, FR-SEL)
+
+actor "Инженер" as U
+participant "SchematicScene" as SCENE
+participant "QUndoStack" as UNDO
+participant "CanvasApi" as API
+participant "CellSchema (pydantic)" as CELL
+participant "MessageLog" as LOG
+participant "AutosaveTimer" as AS
+
+U -> SCENE : drag&drop символа из LibraryPanel\n(FR-PLC-001)
+SCENE -> API : place(inst, master, x, y)
+API -> CELL : CellSchema.model_validate\n(имя уникально — FR-PRP-005)
+API -> SCENE : координаты кратны сетке 10 px (FR-GRD-001)
+
+U -> SCENE : провести провод от вывода A к выводу B
+SCENE -> CELL : create wire, автоимя net nK\n(FR-WIR-002; узел 0 не автонумеруется — FR-WIR-003)
+SCENE -> UNDO : push(QUndoCommand)
+
+U -> SCENE : правка параметра в PropertyPanel\n(тип/диапазон из ParamSpec — FR-PRP-002/003)
+SCENE -> API : set_params(cell, inst, {...})
+alt значение вне диапазона
+  API --> LOG : ParameterRangeError → лог (FR-PRP-003)
+  API --> U : прежнее значение сохранено
+else валидно
+  SCENE -> UNDO : одна undo-операция (FR-PRP-004)
+end
+
+U -> SCENE : Ctrl+Z / Ctrl+Y
+UNDO -> CELL : undo()/redo() → модель изменена
+CELL -> SCENE : scene.sync() — инкрементальная перерисовка
+
+SCENE -> CELL : принятие решения: net-переименование
+CELL -> LOG : WIR-004 reject / merge (явное решение пользователя)
+
+note bottom of SCENE
+  Каждое действие — QUndoCommand над pydantic-CellSchema
+  (≥ 50 шагов истории, per-cell — FR-SEL-003…005).
+  Изменения отмечают dirty → автосохранение (FR-PRS-001).
+end note
+
+@enduml

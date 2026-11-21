@@ -40,7 +40,7 @@ def test_breakpoint_is_in_result_grid(tran, breakpoint: float) -> None:
 @pytest.mark.parametrize("breakpoint", [RISE, FALL])
 def test_step_does_not_jump_over_breakpoint(tran, breakpoint: float) -> None:
     times = list(tran["time"])
-    for a, b in zip(times, times[1:]):
+    for a, b in zip(times, times[1:], strict=False):
         assert not (a < breakpoint - 1e-12 and b > breakpoint + 1e-12), (
             f"шаг [{a}, {b}] перепрыгнул фронт {breakpoint}"
         )
@@ -48,7 +48,7 @@ def test_step_does_not_jump_over_breakpoint(tran, breakpoint: float) -> None:
 
 def test_rise_front_is_reproduced(tran) -> None:
     times, v = tran["time"], tran["V(in)"]
-    rising = [(t, x) for t, x in zip(times, v) if RISE <= t <= RISE + 1e-9]
+    rising = [(t, x) for t, x in zip(times, v, strict=False) if RISE <= t <= RISE + 1e-9]
     assert rising
     assert rising[0][1] <= 1e-3
     assert rising[-1][1] >= 0.99

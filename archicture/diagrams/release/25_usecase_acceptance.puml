@@ -34,6 +34,7 @@ package "Этап E3 — редактор схем" {
 
 actor "CI (Windows headless)" as CI
 actor "Инженер" as U
+component "CanvasApi\n(Qt-free, NFR-TST-001)" as API
 
 T1 --> CI
 T2 --> CI
@@ -55,6 +56,12 @@ S1 --> U
 S2 --> U
 S3 --> U
 S4 --> U
+
+' S1–S4 исполняются headless через Qt-free CanvasApi
+S1 --> API
+S2 --> API
+S3 --> API
+S4 --> API
 
 S1 ..> T5 : «проверяется»
 S3 ..> T8
