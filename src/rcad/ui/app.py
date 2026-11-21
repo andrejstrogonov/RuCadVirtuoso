@@ -33,10 +33,12 @@ from rcad.ui.widgets.netlist_view import NetlistView
 from rcad.ui.widgets.property_panel import PropertyPanel
 
 
+import sys
+
 def create_app(argv: list[str] | None = None) -> QApplication:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # NFR-UI-004
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    app = QApplication.instance() or QApplication(argv)
+    app = QApplication.instance() or QApplication(argv if argv is not None else sys.argv)
     app.setApplicationName("RuCadVirtuoso")
     return app
 

@@ -72,16 +72,26 @@ def export_csv(
 ) -> Path:
     """Экспорт выбранных рядов: заголовок `time,<names>` + N+1 строк.
 
-    Возвращает путь к записанному файлу (S1: `time,I(Xmem),@Xmem.x`).
+    Для sweeps без `time` (DC/AC) осью становится первый доступный ряд
+    (например `V(in)`); контракт для TRAN сохраняется: `time,I(Xmem),@Xmem.x`.
+    Возвращает путь к записанному файлу (S1).
     """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    header = ["time", *names]
-    time_series = result["time"]
-    n = len(time_series)
+    available = result.names()
+    if "time" in available:
+        axis = "time"
+    elif "freq" in available:
+        axis = "freq"
+    else:
+        axis = available[0] if available else ""
+    assert axis, "результат не содержит рядов для экспорта"
+    header = [axis, *[n for n in names if n != axis]]
+    axis_series = result[axis]
+    n = len(axis_series)
     with target.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(header)
         for row in range(n):
-            writer.writerow([time_series[row], *[result[name][row] for name in names]])
+            writer.writerow([axis_series[row], *[result[name][row] for name in names if name != axis]])
     return target

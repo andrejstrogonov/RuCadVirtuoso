@@ -46,7 +46,7 @@ def _load_lib(include: str) -> ParsedNetlist:
             top_name="", top_elements=[], top_models={}, top_includes=[],
             subckts={}, directives=[], initial_conditions={}, includes=[],
         )
-    text = Path(resolved).read_text(encoding="utf-8")
+    text = Path(resolved).read_text(encoding="utf-8-sig")
     return parse(text)
 
 
@@ -57,6 +57,9 @@ def flatten_netlist(text: str) -> FlatCircuit:
     all_models: dict[str, ModelDef] = dict(parsed.top_models)
     includes = list(parsed.top_includes)
     subckts: dict = dict(parsed.subckts)
+    # X-карточки разворачиваются только для inline-подсхем проекта (T2);
+    # подсхемы из .include-библиотек остаются элементами X (prиборы).
+    inline_subckts: set[str] = set(parsed.subckts)
 
     for inc in parsed.top_includes:
         lib = _load_lib(inc)
@@ -91,7 +94,7 @@ def flatten_netlist(text: str) -> FlatCircuit:
         from rcad.core.netlist import SubcktDef
 
         for el in elts:
-            if el.card == "X" and el.model and el.model in subckts:
+            if el.card == "X" and el.model and el.model in inline_subckts:
                 sc: SubcktDef = subckts[el.model]
                 new_prefix = prefix + el.name + "."
                 sub_port_map: dict[str, str] = {}

@@ -58,7 +58,10 @@ class Result:
     def _set_element(self, name: str, port: str, value: float | list) -> None:
         key = (name, port)
         self._element_values[key] = value
-        self._series[f"{name}.{port}"] = list(value) if isinstance(value, list) else [value]
+        self._series[f"@{name}.{port}"] = list(value) if isinstance(value, list) else [value]
+
+    def _set_current(self, name: str, value: float | list) -> None:
+        self._series[f"I({name})"] = list(value) if isinstance(value, list) else [value]
 
     def node(self, name: str) -> float | list:
         key = f"V({name})"
@@ -124,6 +127,27 @@ def _get_value(params: dict, key: str, default: float = 0.0) -> float:
         return suffix_float(str(v))
     except (ValueError, TypeError):
         return default
+
+
+def _element_current(el, dev, x: np.ndarray, node_map: dict[str, int]) -> float | None:
+    """Ток через элемент (R: i=v/R, X: i=f(v), M: id) для серии I(<inst>)."""
+    if el.card == "R":
+        r = _get_value(el.params, "R", 1e3)
+        if r == 0:
+            return 0.0
+        n1, n2 = el.nodes[0], el.nodes[1]
+        v1 = float(x[node_map[n1]]) if n1 in node_map else 0.0
+        v2 = float(x[node_map[n2]]) if n2 in node_map else 0.0
+        return (v1 - v2) / r
+    if el.card == "X":
+        v = getattr(dev, "_v", 0.0)
+        current = getattr(dev, "_current", None)
+        if current is not None:
+            return float(current(v))
+        return 0.0
+    if el.card == "M":
+        return float(getattr(dev, "_id", 0.0))
+    return None
 
 
 def run_analysis(netlist_text: str, directive: str) -> Result:
@@ -330,9 +354,10 @@ def _run_dc(assembler: MNAAssembler, circuit, spec, result: Result) -> None:
 
         # Прочие узлы
         for name in sorted(node_map):
-            if name not in result._series:
-                result._series[f"V({name})"] = []
-            result._series[f"V({name})"].append(float(x[node_map[name]]))
+            key = f"V({name})"
+            if key not in result._series:
+                result._series[key] = []
+            result._series[key].append(float(x[node_map[name]]))
 
     # Заполнить серии
     if src_nodes:
@@ -418,10 +443,18 @@ def _run_tran(assembler: MNAAssembler, circuit, spec, result: Result) -> None:
     for name in assembler.vsource_index:
         branch_series[name] = [0.0]
     for el, dev in device_infos:
+        dev.update_state(x, node_map, tstart, dt=integrator.tmax)
+    for el, dev in device_infos:
         state = dev.get_state()
         for port, val in state.items():
             key = (el.name, port)
             element_series[key] = [float(val)]
+
+    current_series: dict[str, list[float]] = {}
+    for el, dev in device_infos:
+        i0 = _element_current(el, dev, x, node_map)
+        if i0 is not None:
+            current_series.setdefault(el.name, []).append(float(i0))
 
     # Состояния устройств для спутниковых моделей (C, L)
     prev_states: dict = {}
@@ -498,6 +531,11 @@ def _run_tran(assembler: MNAAssembler, circuit, spec, result: Result) -> None:
                     element_series[key] = []
                 element_series[key].append(float(val))
 
+        for el, dev in device_infos:
+            i = _element_current(el, dev, x, node_map)
+            if i is not None:
+                current_series.setdefault(el.name, []).append(float(i))
+
         integrator.advance(h)
         t = current_time
         step_count += 1
@@ -510,6 +548,8 @@ def _run_tran(assembler: MNAAssembler, circuit, spec, result: Result) -> None:
         result._set_branch(name, values)
     for (name, port), values in element_series.items():
         result._set_element(name, port, values)
+    for name, values in current_series.items():
+        result._set_current(name, values)
 
     result.report["step_rejections"] = integrator.step_rejections
 

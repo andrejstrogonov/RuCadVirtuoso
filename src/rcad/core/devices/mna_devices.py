@@ -89,6 +89,8 @@ class Capacitor(DeviceModel):
             step = dt if dt is not None else self.tstep
             g_eq = 2.0 * c / step
             i_hist = g_eq * self._state.get("v", 0.0) + self._state.get("i", 0.0)
+            self._state["g_eq"] = g_eq
+            self._state["i_hist"] = i_hist
         i = g_eq * v - i_hist
         self._state["v"] = v
         self._state["i"] = i
@@ -190,8 +192,14 @@ class VoltageSource(DeviceModel):
 
     @staticmethod
     def _parse_numbers(text: str) -> list[float]:
+        s = str(text).strip()
+        if "(" in s:
+            start = s.index("(")
+            end = s.rfind(")")
+            if end > start:
+                s = s[start + 1:end]
         nums: list[float] = []
-        for tok in str(text).split():
+        for tok in s.split():
             try:
                 nums.append(suffix_float(tok))
             except ValueError:

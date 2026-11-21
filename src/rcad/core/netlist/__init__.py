@@ -248,6 +248,10 @@ def _parse_source_params(tokens: list[str], params: dict) -> None:
             key = tok.split("(")[0].upper()
             params[key] = tok
             i += 1
+        elif "=" in tok and not tok.endswith("="):
+            key, value = tok.split("=", 1)
+            params[key.strip().upper()] = value.strip()
+            i += 1
         elif upper in ("DC", "AC") and i + 1 < len(tokens):
             params[upper] = tokens[i + 1]
             i += 2
