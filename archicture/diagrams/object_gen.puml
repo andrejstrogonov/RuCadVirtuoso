@@ -1,0 +1,60 @@
+@startuml
+object "lib : DesignLibrary" as lib
+object "cell : TunedAmpTop" as cell
+object "view : schematic" as view
+
+object "M1 : Transistor" as m1
+object "R1 : Resistor" as r1
+object "C1 : Capacitor" as c1
+object "L1 : Inductor" as l1
+object "L2 : Inductor" as l2
+object "MUT : MutualCoupling" as mut
+object "SW1 : VSwitch" as sw1
+object "Mem1 : Memristor" as mem1
+
+object "VDD : VoltageSource" as vdd
+object "VGND : Ground" as gnd
+object "E1 : VCVS" as e1
+object "G1 : VCCS" as g1
+object "B1 : BehavioralSource" as b1
+
+object "w_pulse : PwlWaveform" as pwlf
+object "ci : ControlInput" as ci
+object "net : Vout" as net1
+
+lib --> cell
+cell --> view
+view --> m1
+view --> r1
+view --> c1
+view --> l1
+view --> l2
+view --> mut
+view --> sw1
+view --> mem1
+view --> vdd
+view --> gnd
+view --> e1
+view --> g1
+view --> b1
+view --> ci
+vdd --> pwlf
+e1 --> ci
+g1 --> ci
+sw1 --> ci
+
+m1 : refCell = nch_svt\nW = 1u, L = 28n, m = 4
+r1 : refCell = res_metal\nr = 5k
+c1 : refCell = mimcap\nc = 1p
+l1 : refCell = mind\nl = 10n, rSeries = 2
+l2 : refCell = mind\nl = 10n, rSeries = 2
+mut : k = 0.98
+sw1 : rOn = 1, rOff = 1G\nvtOn = 0.6, vtOff = 0.4
+mem1 : model = vteam_hp
+vdd : prefix = vpwl\ndc = 1.2
+e1 : gain = 10\ncontrol = пара цепей (in, in_ref)
+g1 : gm = 1m\ncontrol = пара цепей (fb, fb_ref)
+b1 : expression =\n"V = 1.2*tanh(3*sin(2*pi*1G*time))"
+ci : type = voltage
+gnd : netName = gnd!
+@enduml
