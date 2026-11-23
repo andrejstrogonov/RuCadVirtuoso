@@ -1,0 +1,72 @@
+@startuml
+left to right direction
+actor "Разработчик\nсхем" as Eng
+actor "Технолог/\nадмин PDK" as PdkAdmin
+actor "Разработчик\nVerilog-A" as VaDev
+actor "Мастер-схемотехник" as Lead
+
+rectangle "Cadence Virtuoso (схемотехника)" {
+  usecase "Создать проектную\nбиблиотеку" as UC1
+  usecase "Подключить PDK\nи библиотеку моделей" as UC2
+  usecase "Подключить analogLib\n(базовые элементы)" as UC2b
+  usecase "Создать ячейку\n(cell) и вид schematic" as UC3
+  usecase "Построить символ\n(symbol view)" as UC4
+  usecase "Разместить прибор\n(MOSFET / мемристор /\nнейристор)" as UC5
+  usecase "Разместить пассивный элемент\n(R, C, диод)" as UC5b
+  usecase "Разместить индуктивность\nи задать магнитную связь (k)" as UC5e
+  usecase "Разместить ключ\n(SPST / SPDT / vswitch)" as UC5f
+  usecase "Разместить независимый\nисточник (DC / SIN / PULSE / PWL)" as UC5c
+  usecase "Разместить управляемый источник\n(VCVS / VCCS / CCCS / CCVS)" as UC5g
+  usecase "Подключить поведенческий\nисточник (B-source / Verilog-A)" as UC5h
+  usecase "Поставить землю\n(gnd / gnda)" as UC5d
+  usecase "Соединить приборы\nцепями и шинами" as UC6
+  usecase "Редактировать параметры\nчерез CDF" as UC7
+  usecase "Задать форму сигнала\n(DC, SIN, PULSE, PWL, SFFM)" as UC7b
+  usecase "Задать выражение\nповеденческого источника" as UC7c
+  usecase "Разработать/собрать\nVerilog-A модуль" as UC12
+  usecase "Спускаться по иерархии\n(descend / ascend)" as UC8
+  usecase "Проверить связность\nи ошибки (check & save)" as UC9
+  usecase "Сгенерировать нетлист\n(CDL / Spectre)" as UC10
+  usecase "Настроить секции\nмоделей (corner)" as UC11
+}
+
+Eng --> UC1
+Eng --> UC3
+Eng --> UC4
+Eng --> UC5
+Eng --> UC5b
+Eng --> UC5e
+Eng --> UC5f
+Eng --> UC5c
+Eng --> UC5g
+Eng --> UC5h
+Eng --> UC5d
+Eng --> UC6
+Eng --> UC7
+Eng --> UC7b
+Eng --> UC7c
+Eng --> UC8
+Eng --> UC9
+Eng --> UC10
+
+VaDev --> UC12
+PdkAdmin --> UC2
+PdkAdmin --> UC2b
+PdkAdmin --> UC11
+
+Lead --> UC8
+Lead --> UC9
+
+UC9 ..> UC6 : <<include>>
+UC10 ..> UC9 : <<include>>
+UC7 ..> UC5 : <<extend>>
+UC7b ..> UC5c : <<extend>>
+UC7c ..> UC5h : <<extend>>
+UC5b ..> UC2b : <<include>>
+UC5c ..> UC2b : <<include>>
+UC5d ..> UC2b : <<include>>
+UC5e ..> UC2b : <<include>>
+UC5f ..> UC2b : <<include>>
+UC5g ..> UC2b : <<include>>
+UC5h ..> UC12 : <<include>>
+@enduml
