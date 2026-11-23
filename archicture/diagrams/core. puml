@@ -1,0 +1,445 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class DesignLibrary {
+  +name : String
+  +technology : Technology
+  +isReference : boolean
+  +addCell(c : Cell)
+  +getMaster(cname : String, vname : String) : View
+}
+
+class Cell {
+  +name : String
+  +isLeaf : boolean
+}
+
+abstract class View {
+  +name : ViewType  {schematic, symbol, hdl, veriloga}
+  +cell : Cell
+}
+
+class SchematicView {
+  -canvas : GraphicalContent
+  +addInstance()
+  +addWire()
+  +checkConnectivity() : List<Error>
+}
+
+class SymbolView {
+  +formalPins : Set<Pin>
+  +generateSymbolFromSchematic()
+}
+
+class Instance {
+  +refLib : String
+  +refCell : String
+  +refView : String
+  +position : Point
+  +orientation : Transform
+  +paramOverrides : Map<String, String>
+  +isFlattened : boolean
+}
+
+class Wire {
+  +routing : List<Point>
+  +busWidth : int
+}
+
+class Net {
+  +name : String
+  +isGlobal : boolean
+  +getType() : NetType
+}
+
+class Pin {
+  +direction : PortDir {input, output, inout}
+  +net : Net
+}
+
+class PinRef {
+  +instance : Instance
+  +pinName : String
+}
+
+class Netlabel {
+  +net : Net
+  +text : String
+}
+
+class CdfParameter {
+  +name : String
+  +type : ParamType
+  +defaultValue : String
+  +choices : List<String>
+  +callback : CallbackRef
+}
+
+' ================= Приборы =================
+
+abstract class Device {
+  <<schematic device>>
+  +prefix : String  {M, X, R, C, L, D, S, V, I, E, G, F, H, B}
+  +parameters : Map<String, String>
+}
+
+class Transistor {
+  +type : MosType {nmos, pmos}
+  +W : Length
+  +L : Length
+  +nf, m : int
+  +model : DeviceModel
+}
+
+class Memristor {
+  +topology : TwoTerminal
+  +initialState : double
+  +model : DeviceModel
+}
+
+class Neuroistor {
+  +topology : MultiTerminal {2T, 3T, 4T}
+  +synapticWeight : double
+  +dynamics : DynamicMode {volatile, nonvolatile}
+  +model : DeviceModel
+}
+
+' ================= Пассивные элементы =================
+
+abstract class PassiveDevice {
+  <<two-terminal passive>>
+}
+
+class Resistor {
+  +r : double
+  +rType : ResType {R, res_diff, res_metal, res_poly}
+  +l, w : Length
+  +model : ResModel
+}
+
+class Capacitor {
+  +c : double
+  +cType : CapType {C, cap, mimcap, momcap}
+  +l, w : Length
+  +model : CapModel
+}
+
+class Inductor {
+  +l : Inductance
+  +rSeries : Resistance
+  +iType : IndType {L, mind, spiral}
+  +model : IndModel
+}
+
+class Diode {
+  +area, pj : double
+  +m : int
+  +model : DiodeModel
+}
+
+class MutualCoupling {
+  <<netlist statement k>>
+  +k : double  {0..1}
+}
+
+' ================= Ключи =================
+
+abstract class Switch {
+  <<switch>>
+  +rOn : Resistance
+  +rOff : Resistance
+  +initialState : SwState {open, closed}
+  +hysteresis : double
+}
+
+class IdealSwitch {
+  +topology : SwTopo {spst, spdt}
+}
+
+class VSwitch {
+  +vtOn, vtOff : Voltage
+  +model : SwitchModel
+}
+
+class ISwitch {
+  +itOn, itOff : Current
+  +model : SwitchModel
+}
+
+' ================= Источники =================
+
+abstract class Source {
+  <<source>>
+  +getSourceExpression() : String
+}
+
+class IndependentSource {
+  +waveform : Waveform
+  +dc : double
+  +ac : ACSpec {mag, phase}
+}
+
+class VoltageSource {
+  +prefix : V  {vdc, vpulse, vsin, vpwl, vac, vprbas}
+}
+
+class CurrentSource {
+  +prefix : I  {idc, ipulse, isin, ipwl, iac}
+}
+
+class Probe {
+  <<0V sense source>>
+  +dc = 0
+  +sensesBranchCurrent : true
+}
+
+abstract class ControlledSource {
+  <<dependent source>>
+  +gain : double
+  +control : ControlInput
+}
+
+class VCVS {
+  +prefix : E
+  +gain : VoltageGain
+}
+
+class VCCS {
+  +prefix : G
+  +gm : Transconductance
+}
+
+class CCCS {
+  +prefix : F
+  +h : CurrentGain
+}
+
+class CCVS {
+  +prefix : H
+  +rm : Transresistance
+}
+
+class BehavioralSource {
+  <<B-source / Verilog-A>>
+  +expression : String  {V=..., I=...}
+  +usesDdt : boolean
+  +vaModule : VerilogAModule [0..1]
+}
+
+class VerilogAModule {
+  +module : String
+  +ports : List<Pin>
+  +params : Map<String, String>
+}
+
+abstract class Waveform {
+  <<strategy>>
+  +toNetlistExpr() : String
+}
+
+class DcWaveform {
+  +value : double
+}
+
+class SinWaveform {
+  +ampl, offset, freq
+  +delay, damp, phase
+}
+
+class PulseWaveform {
+  +v1, v2 : Voltage
+  +delay, rise, fall, width, period : Time
+}
+
+class PwlWaveform {
+  +points : List<Pair<Time, Value>>
+  +repeat : boolean
+}
+
+class SffmWaveform {
+  +offset, ampl, carrierFreq,\nmodFreq, fmIndex
+}
+
+class AcWaveform {
+  +mag, phase : double
+}
+
+class ControlInput {
+  <<variant>>
+  +type : CtrlType {voltage, current}
+}
+
+class Ground {
+  +netName : String {gnd!, gnda!}
+  +isGlobal : true
+}
+
+' ================= Модели =================
+
+abstract class DeviceModel {
+  <<model card>>
+  +modelName : String
+  +sourceSection : String
+}
+
+class BsimModel {
+  +level : String {BSIM4, BSIM6, EKV}
+}
+
+class MemristorModel {
+  +family : ModelFamily {HP, VTEAM, Biolek, Joglekar}
+  +R0n, R0ff : Resistance
+}
+
+class NeuroistorModel {
+  +family : String {MTJ, Ag-chalcogenide, PCM}
+  +pulseResponse : Model
+}
+
+class DiodeModel {
+  +family : String {spice diode, Schottky}
+  +is, rs, n, cj0 : double
+}
+
+class ResModel {
+  +family : String {r2, res_diff, res_metal, res_poly}
+  +tc1, tc2, rsh : double
+}
+
+class CapModel {
+  +family : String {cap2, mimcap, moscap}
+  +cj, cjsw, tc : double
+}
+
+class IndModel {
+  +family : String {L, mind, spiral}
+  +tc1, tc2, rsh : double
+}
+
+class SwitchModel {
+  +family : String {sw, csw, vswitch}
+  +ron, roff : Resistance
+}
+
+class Technology {
+  +name : String  {TSMC 28, GF 22FDX, RuO2/Ag-прототип}
+  +modelFiles : List<String>
+}
+
+' ================= Ассоциации =================
+
+DesignLibrary "1" o-- "0..*" Cell
+Cell "1" *-- "1..*" View
+SchematicView --|> View
+SymbolView --|> View
+SchematicView "1" o-- "0..*" Instance
+SchematicView "1" o-- "0..*" Wire
+SchematicView "1" o-- "0..*" Net
+SchematicView "1" o-- "0..*" Netlabel
+Instance "1" --> "1" View : master
+PinRef "1" --> "1" Pin
+Wire "0..*" o-- "0..*" PinRef
+Net "1" o-- "0..*" Pin
+Cell "1" o-- "1..*" CdfParameter
+
+Device --|> Instance
+Transistor --|> Device
+Memristor --|> Device
+Neuroistor --|> Device
+PassiveDevice --|> Device
+Resistor --|> PassiveDevice
+Capacitor --|> PassiveDevice
+Inductor --|> PassiveDevice
+Diode --|> PassiveDevice
+MutualCoupling "1" -- "2..*" Inductor : связывает катушки
+Switch --|> Device
+IdealSwitch --|> Switch
+VSwitch --|> Switch
+ISwitch --|> Switch
+
+Source --|> Device
+IndependentSource --|> Source
+VoltageSource --|> IndependentSource
+CurrentSource --|> IndependentSource
+IndependentSource "1" o-- "1" Waveform
+DcWaveform --|> Waveform
+SinWaveform --|> Waveform
+PulseWaveform --|> Waveform
+PwlWaveform --|> Waveform
+SffmWaveform --|> Waveform
+AcWaveform --|> Waveform
+
+ControlledSource --|> Source
+VCVS --|> ControlledSource
+VCCS --|> ControlledSource
+CCCS --|> ControlledSource
+CCVS --|> ControlledSource
+ControlledSource "1" o-- "1" ControlInput
+ControlInput --> "2" Net : управление напряжением\n(пара цепей + -)
+ControlInput --> "1" Probe : управление током\n(ветвь через пробник)
+Probe ..> VoltageSource
+
+BehavioralSource --|> Source
+BehavioralSource "0..1" --> "0..1" VerilogAModule
+
+Ground --|> Instance
+Ground ..> Net : "привязка к глобальной цепи"
+
+Device "1" o-- "1" DeviceModel
+BsimModel --|> DeviceModel
+MemristorModel --|> DeviceModel
+NeuroistorModel --|> DeviceModel
+DiodeModel --|> DeviceModel
+ResModel --|> DeviceModel
+CapModel --|> DeviceModel
+IndModel --|> DeviceModel
+SwitchModel --|> DeviceModel
+DesignLibrary "1" --> "1" Technology
+Technology "1" o-- "1..*" DeviceModel : доступные модели
+Transistor ..> BsimModel
+Memristor ..> MemristorModel
+Neuroistor ..> NeuroistorModel
+Diode ..> DiodeModel
+Resistor ..> ResModel
+Capacitor ..> CapModel
+Inductor ..> IndModel
+Switch ..> SwitchModel
+
+note right of Device
+  Приборы — подклассы Instance:
+  графические вхождения мастеров
+  в схему с переопределёнными
+  CDF-параметрами
+end note
+
+note bottom of ControlledSource
+  В нетлисте: E (VCVS), G (VCCS),
+  F (CCCS), H (CCVS). Для управления
+  током (F, H) нужна измерительная
+  ветвь — источник на 0 В (Probe),
+  поэтому ControlInput ссылается
+  либо на пару цепей, либо на Probe
+end note
+
+note bottom of BehavioralSource
+  B-source задаёт произвольное
+  выражение V=expr / I=expr.
+  Если выражение содержит ddt()
+  или сложную физику — нужен
+  Verilog-A модуль вместо формулы
+end note
+
+note bottom of MutualCoupling
+  Связь катушек — не прибор, а
+  утверждение о цепях: k между
+  двумя и более индуктивностями.
+  В нетлисте — строка kX L1 L2 k
+end note
+
+note right of Ground
+  Земля — не физический прибор:
+  символ переименовывает цепь
+  в gnd! (глобальную), нетлистер
+  заменяет её на узел 0
+end note
+@enduml
